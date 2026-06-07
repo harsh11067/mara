@@ -1,0 +1,27 @@
+{
+  "name": "mara-attestation",
+  "version": "1.0.0",
+  "description": "MARAAttestation smart contract for ValueChain",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy:testnet": "npx hardhat run scripts/deploy.ts --network valuechain_testnet",
+    "deploy:sepolia": "npx hardhat run scripts/deploy.ts --network sepolia",
+    "deploy:mainnet": "npx hardhat run scripts/deploy.ts --network valuechain_mainnet",
+    "deploy:local": "npx hardhat run scripts/deploy.ts --network localhost",
+    "attest:demo": "npx hardhat run scripts/attest-demo.ts --network localhost",
+    "attest:demo:testnet": "npx hardhat run scripts/attest-demo.ts --network valuechain_testnet",
+    "attest:demo:sepolia": "npx hardhat run scripts/attest-demo.ts --network sepolia",
+    "verify:testnet": "npx hardhat verify --network valuechain_testnet",
+    "size": "npx hardhat size-contracts",
+    "node": "npx hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.4.5",
+    "ts-node": "^10.9.2",
+    "@types/node": "^20.12.7"
+  }
+}

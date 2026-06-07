@@ -1,0 +1,6 @@
+{
+  "name": "MARA Macro Dashboard",
+  "description": "An institutional-grade, dark-mode autonomous trading dashboard combing Bloomberg terminal density, Perplexity-style AI reasoning, and Hyperliquid execution.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

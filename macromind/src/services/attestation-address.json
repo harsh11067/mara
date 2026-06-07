@@ -1,0 +1,32 @@
+{
+  "environment": "local-dev",
+  "network": "localhost",
+  "chainId": 31337,
+  "contractAddress": "0xC1B8C8Be39f362378500cc366030d2E0214665db",
+  "operator": "0x2633a0d83a2aA43449DAd7a304a0EE71F5Bfa8eC",
+  "deployedAt": "2026-06-07T07:21:32.111Z",
+  "deployTxHash": "0x9b1864a0fcb1982a3bbc8cdf3f1b64484f9fed794d294922adffc3ee142b1752",
+  "version": "1.0.0",
+  "deployer": "0x2633a0d83a2aA43449DAd7a304a0EE71F5Bfa8eC",
+  "abi": [
+    "function agentSummary() view returns (string,string,address,uint256,uint256,uint256,uint256,bool)",
+    "function attestDecision(bytes32,bytes32,uint8,uint16,uint8) external",
+    "function batchAttestDecisions(bytes32[],bytes32[],uint8[],uint16[],uint8[]) external",
+    "function getAttestation(bytes32) view returns (tuple(bytes32,bytes32,uint8,uint16,uint8,uint64))",
+    "function attestationCount() view returns (uint256)",
+    "function recentAttestations(uint256) view returns (bytes32[])",
+    "function computeDecisionHash(string,string,uint256,uint8,uint16) pure returns (bytes32)",
+    "function computeEventHash(string,uint256) pure returns (bytes32)",
+    "function upgradeStrategy(string,string) external",
+    "function activateKillSwitch(string,uint256) external",
+    "function resetKillSwitch() external",
+    "function currentVersion() view returns (string)",
+    "function totalDecisions() view returns (uint256)",
+    "function totalTrades() view returns (uint256)",
+    "function killSwitchActive() view returns (bool)",
+    "event AgentDeployed(address indexed,string,string,uint256)",
+    "event DecisionAttested(bytes32 indexed,bytes32 indexed,uint8,uint16,uint8,uint256,uint256)",
+    "event StrategyUpgraded(string,string,string,uint256,uint256)",
+    "event KillSwitchActivated(string,uint256,uint256)"
+  ]
+}

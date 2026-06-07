@@ -1,0 +1,41 @@
+{
+  "name": "macromind",
+  "version": "1.0.0",
+  "description": "MARA — Macro-Aware Research & Execution Agent",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "npx tsx src/index.ts",
+    "dev": "npx tsx --watch src/index.ts",
+    "test:sosovalue": "npx tsx scripts/test-sosovalue-api.ts",
+    "test:sodex": "npx tsx scripts/test-sodex-read.ts",
+    "test:surprise": "npx tsx scripts/test-surprise-calculator.ts",
+    "test:ai": "npx tsx scripts/test-conviction-engine.ts",
+    "test:pipeline": "npx tsx scripts/test-pipeline.ts",
+    "test:sign": "npx tsx scripts/test-sodex-signing.ts",
+    "verify:identity": "npx tsx scripts/verify-identity.ts",
+    "test:attest": "npx tsx scripts/test-attestation-live.ts",
+    "typecheck": "npx tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@hono/node-server": "^2.0.4",
+    "better-sqlite3": "^12.10.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.3",
+    "hono": "^4.5.3",
+    "node-cron": "^3.0.3",
+    "uuid": "^10.0.0",
+    "ws": "^8.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.7.5",
+    "@types/node-cron": "^3.0.11",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}
