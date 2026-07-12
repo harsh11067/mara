@@ -22,6 +22,9 @@ typechain-types/
 .env.local
 .env.*.local
 
+# Deploy script with embedded tokens — never commit
+deploy-all.sh
+
 # Logs and debug
 *.log
 npm-debug.log*

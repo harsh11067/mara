@@ -92,9 +92,8 @@ curl -X POST localhost:3001/api/trigger -H 'Content-Type: application/json' \
 cd ../mara-macro-dashboard && npm run dev             # open /, /terminal, /judges, /diag, /track
 ```
 
-## F. Deploy runbook (the one remaining fixture Stage-0 action)
-1. Rotate the tokens pasted in chat, then push to GitHub.
-2. Render: new web service, root `macromind`, build `npm install`, start `npm start`; env from `.env` (+`DATABASE_URL` Neon, `NODE_ENV=production`).
-3. Vercel: import repo, root `mara-macro-dashboard`, env `VITE_API_URL=https://<render>.onrender.com`.
-4. Set repo variable `BACKEND_HEALTHZ_URL` → keepalive workflow goes live.
-5. SoDEX faucet → fund `0x2633…` → `npm run deploy:testnet` in `mara-attestation` → flip `VALUECHAIN_RPC` + `MARA_CONTRACT_ADDRESS`.
+## F. Deploy status
+1. ✅ **GitHub pushed** — `github.com/harsh11067/mara` @ main (commit `31a014b`), secrets verified out of the tree (`.env`/`*.db`/`deploy-all.sh` gitignored, secret scan clean).
+2. 🟨 **Render + Vercel + keepalive var — one command left**: run `bash deploy-all.sh` from the repo root (creates the Render web service `mara-backend` with all env vars, sets the `BACKEND_HEALTHZ_URL` repo variable, deploys the frontend to Vercel with `VITE_API_URL` baked in, waits for `/healthz`). The script embeds the chat-pasted tokens — **rotate them and delete the script afterwards**.
+3. 🔒 SoDEX faucet → fund `0x2633…` gas → `npm run deploy:testnet` in `mara-attestation` → set `VALUECHAIN_RPC=https://testnet.valuechain.xyz` + new `MARA_CONTRACT_ADDRESS` on Render.
+   (Note: `/diag` showed the SoDEX **USDC** balance is already 100.00 — only attestation gas remains external.)
