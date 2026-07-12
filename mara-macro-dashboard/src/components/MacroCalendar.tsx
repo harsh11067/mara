@@ -52,6 +52,13 @@ export default function MacroCalendar({ events, selectedEventId, onSelectEvent }
 
       {/* Event rows */}
       <div className="mc-scroll" style={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+        {events.length === 0 && (
+          <div style={{ padding: "22px 16px", textAlign: "center" }}>
+            <span className="mara-body" style={{ color: "var(--fg-3)", fontSize: 12 }}>
+              Waiting for the live SoSoValue calendar — no events cached yet.
+            </span>
+          </div>
+        )}
         {events.map((event) => {
           const isSelected = selectedEventId === event.id;
           const isLive     = event.state === "watching";

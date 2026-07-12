@@ -67,7 +67,10 @@ export class SoDEXWebSocketClient {
   private readonly chainId:     number;
 
   constructor() {
-    this.wsUrl      = config.sodex.wsEndpoint ?? 'wss://testnet-gw.sodex.dev/ws';
+    // SoDEX WS lives at /ws/perps and /ws/spot — a bare /ws returns 404.
+    // Normalize whatever the env provides to the perps feed.
+    const base = (config.sodex.wsEndpoint ?? 'wss://testnet-gw.sodex.dev/ws').replace(/\/$/, '');
+    this.wsUrl      = /\/ws\/(perps|spot)$/.test(base) ? base : `${base}/perps`;
     this.address    = config.sodex.masterAddress;
     this.privateKey = config.sodex.apiKeyPrivate;
     this.chainId    = config.sodex.chainId;

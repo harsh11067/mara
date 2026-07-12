@@ -139,7 +139,7 @@ function normalizeTicker(t: RawTicker): PerpsTicker {
     openInterest: t.openInterest,
     fundingRate: t.fundingRate,
     volume24h: t.quoteVolume,         // use quote (USD) volume
-    priceChange24h: t.change,
+    priceChange24h: String(t.changePct ?? ''),  // PERCENT change (t.change is the absolute USD move)
     high24h: t.highPx,
     low24h: t.lowPx,
   };
@@ -289,6 +289,7 @@ export class SoDEXClient {
     const raw = unwrapData(res);
     return Array.isArray(raw) ? raw.map((s) => ({
       symbol: s.name ?? s.symbol ?? '',
+      symbolId: s.id ?? 0,   // numeric symbolID — required for signed spot orders
       baseCurrency: s.baseCoin ?? '',
       quoteCurrency: s.quoteCoin ?? '',
       status: s.status,

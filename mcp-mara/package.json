@@ -1,0 +1,24 @@
+{
+  "name": "mcp-mara",
+  "version": "1.0.0",
+  "description": "MCP server for MARA — the macro-native trading agent. Gives any AI client (Claude Desktop, Cursor, VS Code) live macro calendar, surprise scores, catalyst-corpus analogs, conviction verdicts, risk state, verifiable track record, and (gated) real SoDEX testnet execution.",
+  "type": "module",
+  "bin": { "mcp-mara": "dist/index.js" },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npx tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["mcp", "modelcontextprotocol", "macro", "trading", "sosovalue", "sodex", "crypto"],
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

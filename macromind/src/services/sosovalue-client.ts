@@ -337,6 +337,190 @@ export class SoSoValueClient {
     return raw;
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  EXPANDED SURFACE — all 9 SoSoValue modules (Wave 3: 11 → 35 endpoints)
+  //  Each method is a genuine live HTTP call (fetchWithRetry, x-soso-api-key).
+  //  Responses vary per module; we normalize to records via extractList.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Generic raw GET — used by /diag to prove endpoints respond live. */
+  async raw(path: string): Promise<unknown> {
+    return fetchWithRetry(`${this.base}${path}`, this.headers);
+  }
+
+  // ── Currencies module ────────────────────────────────────────────────────────
+
+  /** GET /currencies — full currency list (id, symbol, name). */
+  async getCurrencies(): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw('/currencies');
+    return this.extractList(res, 'currencies');
+  }
+
+  /** GET /currencies/{id} — single currency detail. */
+  async getCurrencyDetail(currencyId: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/currencies/${encodeURIComponent(currencyId)}`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  /** GET /currencies/{id}/token-economics */
+  async getTokenEconomics(currencyId: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/currencies/${encodeURIComponent(currencyId)}/token-economics`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  /** GET /currencies/{id}/supply */
+  async getCurrencySupply(currencyId: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/currencies/${encodeURIComponent(currencyId)}/supply`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  /** GET /currencies/{id}/pairs */
+  async getCurrencyPairs(currencyId: string): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw(`/currencies/${encodeURIComponent(currencyId)}/pairs`);
+    return this.extractList(res, 'currency pairs');
+  }
+
+  /** GET /currencies/sector-spotlight */
+  async getSectorSpotlight(): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw('/currencies/sector-spotlight');
+    return this.extractList(res, 'sector spotlight');
+  }
+
+  /** GET /currencies/{id}/fundraising */
+  async getCurrencyFundraising(currencyId: string): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw(`/currencies/${encodeURIComponent(currencyId)}/fundraising`);
+    return this.extractList(res, 'currency fundraising');
+  }
+
+  // ── ETF module (beyond summary-history) ──────────────────────────────────────
+
+  /** GET /etfs?symbol=BTC — ETF list for a crypto. */
+  async getEtfs(symbol = 'BTC'): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw(`/etfs?country_code=US&symbol=${encodeURIComponent(symbol)}`);
+    return this.extractList(res, 'etfs');
+  }
+
+  /** GET /etfs/{ticker}/market-snapshot */
+  async getEtfSnapshot(ticker: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/etfs/${encodeURIComponent(ticker)}/market-snapshot`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  /** GET /etfs/{ticker}/history */
+  async getEtfHistory(ticker: string, limit = 14): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw(`/etfs/${encodeURIComponent(ticker)}/history?limit=${limit}`);
+    return this.extractList(res, 'etf history');
+  }
+
+  // ── Indices module (beyond list/constituents/snapshot) ───────────────────────
+
+  /** GET /indices/{ticker}/klines */
+  async getIndexKlines(ticker: string, limit = 30): Promise<Kline[]> {
+    const res = await this.raw(`/indices/${encodeURIComponent(ticker)}/klines?interval=1d&limit=${limit}`);
+    const raw = this.extractList<RawKline>(res, 'index klines');
+    return raw.map((k) => ({
+      openTime: parseInt(k.timestamp, 10),
+      open: k.open, high: k.high, low: k.low, close: k.close,
+      volume: parseFloat(k.volume ?? '0'),
+    }));
+  }
+
+  // ── Crypto Stocks module ─────────────────────────────────────────────────────
+
+  /** GET /crypto-stocks */
+  async getCryptoStocks(): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw('/crypto-stocks');
+    return this.extractList(res, 'crypto stocks');
+  }
+
+  /** GET /crypto-stocks/{ticker}/market-snapshot */
+  async getCryptoStockSnapshot(ticker: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/crypto-stocks/${encodeURIComponent(ticker)}/market-snapshot`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  /** GET /crypto-stocks/{ticker}/market-cap */
+  async getCryptoStockMarketCap(ticker: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/crypto-stocks/${encodeURIComponent(ticker)}/market-cap`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  /** GET /crypto-stocks/{ticker}/klines */
+  async getCryptoStockKlines(ticker: string, limit = 30): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw(`/crypto-stocks/${encodeURIComponent(ticker)}/klines?interval=1d&limit=${limit}`);
+    return this.extractList(res, 'crypto stock klines');
+  }
+
+  /** GET /crypto-stocks/sector */
+  async getCryptoStockSectors(): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw('/crypto-stocks/sector');
+    return this.extractList(res, 'crypto stock sectors');
+  }
+
+  /** GET /crypto-stocks/sector/{name}/index */
+  async getCryptoStockSectorIndex(name: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/crypto-stocks/sector/${encodeURIComponent(name)}/index`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  // ── BTC Treasuries module ────────────────────────────────────────────────────
+
+  /** GET /btc-treasuries */
+  async getBtcTreasuries(): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw('/btc-treasuries');
+    return this.extractList(res, 'btc treasuries');
+  }
+
+  /** GET /btc-treasuries/{ticker}/purchase-history */
+  async getTreasuryPurchaseHistory(ticker: string): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw(`/btc-treasuries/${encodeURIComponent(ticker)}/purchase-history`);
+    return this.extractList(res, 'treasury purchases');
+  }
+
+  // ── Feeds module (beyond latest/hot/search) ──────────────────────────────────
+
+  /** GET /news/featured */
+  async getFeaturedNews(): Promise<NewsItem[]> {
+    const res = await this.raw('/news/featured');
+    const raw = this.extractList<RawNewsItem>(res, 'featured news');
+    return raw.map(normalizeNewsItem);
+  }
+
+  /** GET /news/featured/currency */
+  async getFeaturedCurrencyNews(): Promise<NewsItem[]> {
+    const res = await this.raw('/news/featured/currency');
+    const raw = this.extractList<RawNewsItem>(res, 'featured currency news');
+    return raw.map(normalizeNewsItem);
+  }
+
+  // ── Fundraising module ───────────────────────────────────────────────────────
+
+  /** GET /fundraising/projects */
+  async getFundraisingProjects(limit = 20): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw(`/fundraising/projects?page_size=${limit}`);
+    return this.extractList(res, 'fundraising projects');
+  }
+
+  /** GET /fundraising/projects/{id} */
+  async getFundraisingProject(id: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/fundraising/projects/${encodeURIComponent(id)}`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
+  // ── Analysis Charts module ───────────────────────────────────────────────────
+
+  /** GET /analyses — available analysis chart names. */
+  async getAnalyses(): Promise<Array<Record<string, unknown>>> {
+    const res = await this.raw('/analyses');
+    return this.extractList(res, 'analyses');
+  }
+
+  /** GET /analyses/{chart_name} */
+  async getAnalysisChart(chartName: string): Promise<Record<string, unknown>> {
+    const res = await this.raw(`/analyses/${encodeURIComponent(chartName)}`) as Record<string, unknown>;
+    return (res.data ?? res) as Record<string, unknown>;
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────────
 
   private extractList<T>(data: unknown, label: string): T[] {
@@ -357,3 +541,63 @@ export class SoSoValueClient {
     return [];
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ENDPOINT REGISTRY — every SoSoValue endpoint MARA integrates, by module.
+//  /api/diag counts these and live-pings a rotating subset to prove they respond.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface EndpointDef {
+  module: string;
+  path: string;          // template path
+  probe?: string;        // concrete probe path for /diag (undefined = template-only)
+  usedFor: string;
+}
+
+export const SOSOVALUE_ENDPOINTS: EndpointDef[] = [
+  // Macro (the core trigger)
+  { module: 'Macro', path: '/macro/events', probe: '/macro/events', usedFor: 'Scheduled event calendar (Path B trigger + circuit breaker)' },
+  { module: 'Macro', path: '/macro/events/{event}/history', probe: `/macro/events/${encodeURIComponent('CPI (YoY)')}/history?limit=6`, usedFor: 'Surprise σ engine + corpus seeding' },
+  // Feeds
+  { module: 'Feeds', path: '/news', probe: '/news?page_size=3', usedFor: 'Fast-path scanner (Path A) + AI context' },
+  { module: 'Feeds', path: '/news/hot', probe: '/news/hot', usedFor: 'Hot-headline confirmation' },
+  { module: 'Feeds', path: '/news/search', usedFor: 'Event keyword confirmation' },
+  { module: 'Feeds', path: '/news/featured', probe: '/news/featured', usedFor: 'Dashboard featured feed' },
+  { module: 'Feeds', path: '/news/featured/currency', usedFor: 'Per-asset featured news' },
+  // Currencies
+  { module: 'Currencies', path: '/currencies', probe: '/currencies', usedFor: 'Currency-id resolution (BTC/ETH/SOL)' },
+  { module: 'Currencies', path: '/currencies/{id}', usedFor: 'Asset detail cards' },
+  { module: 'Currencies', path: '/currencies/{id}/market-snapshot', probe: `/currencies/1673723677362319866/market-snapshot`, usedFor: 'Live BTC price in market context' },
+  { module: 'Currencies', path: '/currencies/{id}/klines', probe: `/currencies/1673723677362319866/klines?interval=1d&limit=5`, usedFor: 'ATR volatility + corpus forward returns' },
+  { module: 'Currencies', path: '/currencies/{id}/token-economics', usedFor: 'Fundamental context' },
+  { module: 'Currencies', path: '/currencies/{id}/supply', usedFor: 'Supply context' },
+  { module: 'Currencies', path: '/currencies/{id}/pairs', usedFor: 'Venue coverage' },
+  { module: 'Currencies', path: '/currencies/sector-spotlight', usedFor: 'Sector rotation signal' },
+  { module: 'Currencies', path: '/currencies/{id}/fundraising', usedFor: 'Asset fundraising context' },
+  // ETF
+  { module: 'ETF', path: '/etfs/summary-history', probe: '/etfs/summary-history?country_code=US&symbol=BTC&limit=3', usedFor: 'Institutional-flow confirmation signal' },
+  { module: 'ETF', path: '/etfs', usedFor: 'ETF universe' },
+  { module: 'ETF', path: '/etfs/{ticker}/market-snapshot', usedFor: 'Per-ETF snapshot' },
+  { module: 'ETF', path: '/etfs/{ticker}/history', usedFor: 'Per-ETF flow history' },
+  // Indices (SSI)
+  { module: 'Indices', path: '/indices', probe: '/indices', usedFor: 'SSI universe for rotation leg' },
+  { module: 'Indices', path: '/indices/{ticker}/constituents', usedFor: 'SSI composition display' },
+  { module: 'Indices', path: '/indices/{ticker}/market-snapshot', usedFor: 'SSI live pricing' },
+  { module: 'Indices', path: '/indices/{ticker}/klines', usedFor: 'SSI performance series' },
+  // Crypto Stocks
+  { module: 'CryptoStocks', path: '/crypto-stocks', probe: '/crypto-stocks', usedFor: 'Equity-proxy regime confirmation' },
+  { module: 'CryptoStocks', path: '/crypto-stocks/{ticker}/market-snapshot', usedFor: 'Stock snapshot' },
+  { module: 'CryptoStocks', path: '/crypto-stocks/{ticker}/market-cap', usedFor: 'Stock market cap' },
+  { module: 'CryptoStocks', path: '/crypto-stocks/{ticker}/klines', usedFor: 'Stock series' },
+  { module: 'CryptoStocks', path: '/crypto-stocks/sector', usedFor: 'Sector map' },
+  { module: 'CryptoStocks', path: '/crypto-stocks/sector/{name}/index', usedFor: 'Sector index' },
+  // BTC Treasuries
+  { module: 'Treasuries', path: '/btc-treasuries', probe: '/btc-treasuries', usedFor: 'Corporate-adoption context' },
+  { module: 'Treasuries', path: '/btc-treasuries/{ticker}/purchase-history', usedFor: 'Treasury purchase timeline' },
+  // Fundraising
+  { module: 'Fundraising', path: '/fundraising/projects', usedFor: 'Venture-flow context' },
+  { module: 'Fundraising', path: '/fundraising/projects/{id}', usedFor: 'Project detail' },
+  // Analyses
+  { module: 'Analyses', path: '/analyses', probe: '/analyses', usedFor: 'Chart catalog' },
+  { module: 'Analyses', path: '/analyses/{chart_name}', usedFor: 'Named analysis chart' },
+];

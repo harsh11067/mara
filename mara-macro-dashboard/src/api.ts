@@ -6,7 +6,7 @@
  */
 
 import type {
-  MacroEvent, AiReasoning, Trade, SsiHolding, RotationLog, DirectionType
+  MacroEvent, AiReasoning, SsiHolding, RotationLog, DirectionType, Trade,
 } from './types';
 
 // ── Raw backend shapes (minimal — only what we need) ────────────────────────
@@ -90,13 +90,63 @@ export interface BackendNewsItem {
 
 // ── Fetch helper ────────────────────────────────────────────────────────────
 
+/**
+ * Production base URL (Vercel → Render): set VITE_API_URL to the backend origin
+ * (e.g. https://mara-backend.onrender.com). Locally it stays empty and the
+ * Vite proxy handles /api + /ws.
+ */
+export const API_BASE: string = (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { signal: AbortSignal.timeout(8000) });
+  const res = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
 
 // ── API calls ────────────────────────────────────────────────────────────────
+
+export interface BackendMarkets {
+  markets: Array<{ symbol: string; price: number; changePct: number | null; source: string }>;
+  fetchedAt: number;
+}
+
+export interface BackendPerformanceSummary {
+  totalTrades: number;
+  closedTrades: number;
+  openTrades: number;
+  winRate: number | null;
+  profitFactor: number | null;
+  sharpe: number | null;
+  sortino: number | null;
+  cumulativePnl: number;
+  equity: Array<{ ts: number; value: number }>;
+  note: string;
+}
+
+export interface BackendSsi {
+  holdings: Array<{ symbol: string; balance: number; index: string; type: string }>;
+  holdingsError: string | null;
+  rotations: Array<{ id: string; decision_id: string | null; direction: string; plan_json: string; executed: number; result_json: string | null; created_at: number }>;
+  fetchedAt: number;
+}
+
+export interface DiagCheck {
+  name: string; label: string; ok: boolean;
+  latencyMs: number | null; detail: string; lastValue?: unknown;
+}
+
+export interface BackendDiag {
+  overall: 'green' | 'degraded' | 'red';
+  checks: DiagCheck[];
+  endpointRegistry: {
+    total: number;
+    byModule: Record<string, number>;
+    probedLive: Array<{ path: string; ok: boolean; latencyMs: number }>;
+  };
+  circuitBreaker: { active: boolean; reason: string | null };
+  corpus: { rows: number; byEvent?: Record<string, number> };
+  generatedAt: number;
+}
 
 export const api = {
   status:      () => fetchJson<BackendStatus>('/api/status'),
@@ -106,6 +156,14 @@ export const api = {
   risk:        () => fetchJson<BackendRisk>('/api/risk'),
   performance: () => fetchJson<{ts:number;pnl:number}[]>('/api/performance'),
   news:        () => fetchJson<BackendNewsItem[]>('/api/news?limit=8'),
+  // Wave 3 real-engine surfaces
+  markets:     () => fetchJson<BackendMarkets>('/api/markets'),
+  perfSummary: () => fetchJson<BackendPerformanceSummary>('/api/performance/summary'),
+  ssi:         () => fetchJson<BackendSsi>('/api/ssi'),
+  diag:        () => fetchJson<BackendDiag>('/api/diag'),
+  track:       () => fetchJson<Record<string, unknown>>('/api/track'),
+  backtest:    () => fetchJson<Record<string, unknown>>('/api/backtest'),
+  regime:      () => fetchJson<Record<string, unknown>>('/api/regime'),
 
   trigger: (params: { event: string; actual: number; forecast: number; previous?: number }) =>
     fetch('/api/trigger', {
@@ -126,23 +184,31 @@ export const api = {
 // ── Type mappers ─────────────────────────────────────────────────────────────
 
 export function mapDecision(d: BackendDecision): AiReasoning {
+  const mc = (d.marketContext ?? {}) as Record<string, unknown>;
   return {
     id:             d.id,
-    eventName:      d.eventId ?? d.marketContext?.eventName as string ?? 'Macro Event',
+    eventName:      (mc.eventName as string) ?? d.eventId ?? 'Macro Event',
     timestamp:      d.timestamp,
-    surpriseScore:  d.marketContext?.surpriseScore as number ?? 0,
+    surpriseScore:  (mc.surpriseScore as number) ?? 0,
     direction:      d.conviction,
     confidence:     d.confidence,
-    actual:         String(d.marketContext?.actual ?? '—'),
-    forecast:       String(d.marketContext?.forecast ?? '—'),
+    actual:         String(mc.actual ?? '—'),
+    forecast:       String(mc.forecast ?? '—'),
     reasoning:      d.reasoning,
     sourceNews:     d.newsContext ?? [],
+    engine:         mc.engine as string | undefined,
+    debate:         (mc.debate as AiReasoning['debate']) ?? null,
   };
 }
 
+/** High-impact release families (mirrors the backend circuit-breaker patterns). */
+const HIGH_IMPACT = /\b(CPI|FOMC|Nonfarm|Payroll|NFP|PCE|PPI|Rate Decision|Unemployment|GDP)\b/i;
+const MEDIUM_IMPACT = /\b(Retail|Claims|ISM|PMI|Confidence|Housing|Durable)\b/i;
+
 export function mapEvent(e: BackendEvent): MacroEvent {
-  // Parse date string to timestamp: "2026-05-28" → midnight UTC
-  const ts = new Date(e.date + 'T12:30:00Z').getTime();
+  // SoSoValue macro events are date-granular; we show the date without
+  // inventing a release time (mocks.md A8).
+  const ts = new Date(e.date + 'T12:30:00Z').getTime(); // countdown estimate: standard US release hour
   const state: MacroEvent['state'] =
     e.status === 'FIRED' || e.status === 'PROCESSED' ? 'fired' :
     e.status === 'WATCHING' ? 'watching' : 'upcoming';
@@ -150,13 +216,13 @@ export function mapEvent(e: BackendEvent): MacroEvent {
   return {
     id:         e.id,
     name:       e.name,
-    dateStr:    e.date + ' 12:30 UTC',
+    dateStr:    e.date,
     timestamp:  ts,
     state,
     consensus:  e.forecast !== null ? String(e.forecast) : '—',
     actual:     e.actual !== null ? String(e.actual) : undefined,
     previous:   e.previous !== null ? String(e.previous) : '—',
-    impact:     'high',
+    impact:     HIGH_IMPACT.test(e.name) ? 'high' : MEDIUM_IMPACT.test(e.name) ? 'medium' : 'low',
     unit:       '',
   };
 }
@@ -193,25 +259,62 @@ export function mapTrade(t: BackendTrade): Trade {
   };
 }
 
-// Parse SSI holdings from live risk data — placeholder using mock structure
-// In production these come from SoDEX spot balances via /api/risk
-export function buildSsiHoldings(risk: BackendRisk): SsiHolding[] | null {
-  // If balance is 0 (no testnet funds), return null to keep mock data
-  if ((risk.liveBalance ?? 0) <= 0) return null;
+/** Map REAL SoDEX spot balances (via /api/ssi) into display holdings (mocks.md A5). */
+const SSI_DISPLAY: Record<string, { name: string; ticker: string }> = {
+  mag7: { name: 'Magnificent 7 Tech Index', ticker: 'MAG7.ssi' },
+  defi: { name: 'Decentralized Finance Index', ticker: 'DEFI.ssi' },
+  meme: { name: 'Meme Capital Token Index', ticker: 'MEME.ssi' },
+  ussi: { name: 'Broad US Market (Safe Haven)', ticker: 'USSI' },
+};
 
-  // Placeholder: return null to keep original mock data for demo
-  // In production this would come from a dedicated /api/ssi endpoint
-  return null;
+export function mapSsiHoldings(ssi: BackendSsi): SsiHolding[] {
+  const total = ssi.holdings.reduce((s, h) => s + h.balance, 0);
+  return ssi.holdings.map((h, i) => {
+    const meta = SSI_DISPLAY[h.index] ?? { name: h.symbol, ticker: h.symbol };
+    return {
+      id: `ssi-${i}-${h.index}`,
+      name: meta.name,
+      ticker: meta.ticker,
+      allocationPercent: total > 0 ? Math.round((h.balance / total) * 100) : 0,
+      currentPrice: 0,
+      balance: h.balance,
+      valueUsd: h.balance, // testnet SSI ≈ USDC-denominated; live pricing via indices module
+      dailyChange: 0,
+    };
+  });
+}
+
+export function mapRotations(ssi: BackendSsi): RotationLog[] {
+  return ssi.rotations.map((r) => {
+    let from = '—', to = '—', pct = 0;
+    try {
+      const plan = JSON.parse(r.plan_json) as { orders?: Array<{ symbol: string; side: string }>; maxRotationPct?: number };
+      const sell = plan.orders?.find((o) => o.side === 'SELL');
+      const buy = plan.orders?.find((o) => o.side === 'BUY');
+      from = sell?.symbol.replace('v', '').replace('_vUSDC', '') ?? '—';
+      to = buy?.symbol.replace('v', '').replace('_vUSDC', '') ?? '—';
+      pct = Math.round((plan.maxRotationPct ?? 0) * 100);
+    } catch { /* keep defaults */ }
+    return {
+      id: r.id,
+      timeStr: new Date(r.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      fromTicker: from,
+      toTicker: to,
+      percentage: pct,
+      reason: `${r.direction} rotation ${r.executed ? 'executed' : 'planned'} · decision ${r.decision_id?.slice(0, 8) ?? 'manual'}`,
+    };
+  });
 }
 
 // ── WebSocket hook ────────────────────────────────────────────────────────────
 
 export type WsMessage =
   | { type: 'init';        data: { killSwitch: boolean; decisions: BackendDecision[]; trades: BackendTrade[] } }
-  | { type: 'decision';    data: BackendDecision & { eventName?: string; btcPrice?: number } }
+  | { type: 'decision';    data: BackendDecision & { eventName?: string; btcPrice?: number; decisionId?: string } }
   | { type: 'trade';       data: BackendTrade }
   | { type: 'risk';        data: BackendRisk }
   | { type: 'event_fired'; data: BackendEvent }
+  | { type: 'agent_trace'; data: import('./types').AgentTraceStep }
   | { type: 'status';      data: { killSwitch: boolean; reason?: string } };
 
 export function createWebSocket(onMessage: (msg: WsMessage) => void, onConnect?: () => void): () => void {
@@ -221,8 +324,13 @@ export function createWebSocket(onMessage: (msg: WsMessage) => void, onConnect?:
 
   function connect() {
     if (unmounted) return;
-    const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const url   = `${proto}://${window.location.host}/ws`;
+    let url: string;
+    if (API_BASE) {
+      url = API_BASE.replace(/^http/, 'ws') + '/ws';
+    } else {
+      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      url = `${proto}://${window.location.host}/ws`;
+    }
     ws = new WebSocket(url);
 
     ws.onopen = () => { onConnect?.(); };

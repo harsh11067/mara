@@ -1,5 +1,20 @@
 # MARA: Macro-Aware Research & Execution Agent
 
+## 🌊 Wave 3 — What's new
+
+- **Real engine, zero mocks** — every fabricated dashboard value was hunted down and replaced with live backend data ([mocks.md](mocks.md) documents each one and its resolution).
+- **Agentic AI core** — Gemini now runs a transparent tool-use loop (surprise engine, catalyst corpus, ETF flows, regime, risk gates are its tools); the tool-call trace streams live to the terminal. Falls back safely to the single-call engine.
+- **Bull/Bear/Synthesiser debate** — every print is argued three ways; the verdict ships with dissent and corpus citations.
+- **Macro-catalyst corpus** — historical CPI/NFP/PCE/PPI/FOMC prints seeded from SoSoValue history, tagged with surprise z-scores, regime labels, and real BTC/ETH forward returns (+1d/+3d/+7d/+30d). `POST /api/corpus/seed`, `GET /api/corpus`.
+- **Verifiable track record** — `/track`: dated theses with signal IDs, HIT/STOP/DRIFT outcome resolution, counterfactual curve (MARA vs buy-and-hold vs did-nothing), corpus backtest with Sharpe/Sortino/maxDD/Monte-Carlo VaR (and the Harvey-&-Liu 50%-discounted Sharpe, honestly).
+- **35 SoSoValue endpoints** across all 9 modules (was 11), TTL-cached for the 20 req/min budget, live-probed on `/diag`.
+- **Regime-adaptive risk + macro circuit breaker** — BULL_QUIET…CRASH classification scales position size, stops, and the conviction floor; a pre-event window de-risks around CPI/FOMC/NFP.
+- **`mcp-mara`** — an 8-tool Model Context Protocol server so any AI client (Claude Desktop, Cursor, VS Code) can call MARA's calendar, corpus, conviction, risk state, track record, trade simulator, and (operator-gated) real execution.
+- **Judge surfaces** — `/judges` (60-second script + one-click sample theses), `/diag` (live integration proof with latency), `/healthz` + GitHub Actions keep-alive, Neon Postgres snapshot persistence for Render's ephemeral disk.
+- **Spectral-glow cinematic landing page** — near-black, scroll-driven pipeline narrative: a scroll-drawn ECG pulse runs through six overprint ghost-type stages (DETECT→ATTEST), a live SoDEX ticker tape, count-up proof metrics straight from `/api/diag`, aurora hero, and a spectral scroll-progress bar. The terminal picked up the same dark-aero language (scanlines, glow hovers, spectral scrollbars).
+- **Telegram broadcast** — every signal (including NO_TRADE passes) posts to the channel; wins and losses alike.
+- **Launch video script** — [script.md](script.md): a 90-second (with 60s cut) shot-by-shot script where every frame is a real capture.
+
 MARA is a full-stack, autonomous macro-event trading and portfolio rotation system. It detects high-impact macro releases (such as CPI, Nonfarm Payrolls, and FOMC rate decisions) via a **dual-path scanner**, scores their crypto-market impact using **statistical surprise models + Gemini AI**, checks strict **risk management gates**, and executes **dual-leg trades** (BTC perpetual hedges + spot SSI index rotations) on the **SoDEX testnet** using custom **EIP-712 cryptographic signatures**.
 
 ---

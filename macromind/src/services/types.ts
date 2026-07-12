@@ -189,6 +189,8 @@ export interface PerpsOrder {
 
 export interface SpotSymbol {
   symbol: string;
+  /** numeric symbolID required to sign spot orders (live from /spot/markets/symbols) */
+  symbolId: number;
   baseCurrency: string;
   quoteCurrency: string;
   status?: string;

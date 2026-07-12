@@ -21,6 +21,7 @@ import { activateKillSwitch, isKillSwitchActive } from './executor/kill-switch.j
 import { startApiServer, broadcast } from './api/server.js';
 import { sodexWsClient } from './services/sodex-ws-client.js';
 import { attestationService } from './services/attestation-service.js';
+import { restoreFromNeon, startReplicator, stopReplicator } from './store/db-replicator.js';
 
 const logger = createLogger('MARA');
 
@@ -34,7 +35,11 @@ async function main(): Promise<void> {
   logger.info(`  Endpoint: ${config.sodex.endpoint}\n`);
 
   // ── 1. Initialize database ─────────────────────────────────────────────────
+  // Restore the newest Neon snapshot BEFORE the DB is first opened — this is
+  // what makes the track record survive Render's ephemeral filesystem.
+  await restoreFromNeon();
   getDb(); // triggers schema migrations
+  startReplicator();
 
   // ── 2. Init services ───────────────────────────────────────────────────────
   const sosoClient = new SoSoValueClient(config.sosovalue.apiKey, config.sosovalue.baseUrl);
@@ -227,6 +232,7 @@ async function main(): Promise<void> {
     portfolioTracker.stop();
     sodexWsClient.stop();
     attestationService.stop();  // flushes any pending attestations
+    await stopReplicator();     // final Neon snapshot push
     logger.info('MARA stopped.');
     process.exit(0);
   };

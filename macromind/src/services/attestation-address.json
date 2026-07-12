@@ -2,10 +2,10 @@
   "environment": "local-dev",
   "network": "localhost",
   "chainId": 31337,
-  "contractAddress": "0xC1B8C8Be39f362378500cc366030d2E0214665db",
+  "contractAddress": "0x8BF2520742CCb4101f28C216fF564A221bba1B29",
   "operator": "0x2633a0d83a2aA43449DAd7a304a0EE71F5Bfa8eC",
-  "deployedAt": "2026-06-07T07:21:32.111Z",
-  "deployTxHash": "0x9b1864a0fcb1982a3bbc8cdf3f1b64484f9fed794d294922adffc3ee142b1752",
+  "deployedAt": "2026-07-12T08:12:47.725Z",
+  "deployTxHash": "0xaade1267e905d147c774fddea501dc8838ac2cb2138d546f2d60d6eb53f89179",
   "version": "1.0.0",
   "deployer": "0x2633a0d83a2aA43449DAd7a304a0EE71F5Bfa8eC",
   "abi": [

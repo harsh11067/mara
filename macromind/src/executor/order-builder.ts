@@ -27,6 +27,10 @@ export interface OrderSizingParams {
   tickSize?: string;
   /** Step size string (e.g. "0.001") */
   stepSize?: string;
+  /** Regime × circuit-breaker size multiplier (regime.ts / circuit-breaker.ts). Default 1. */
+  sizeMultiplier?: number;
+  /** Regime stop-widening multiplier. Default 1. */
+  stopMultiplier?: number;
 }
 
 export interface OrderSpec {
@@ -86,8 +90,10 @@ export function calcPositionSize(params: OrderSizingParams): {
   stopLossDistance: number;
 } {
   const { balance, atr14, markPrice, stepSize } = params;
-  const riskAmount = balance * config.risk.maxRiskPerTrade;
-  const stopLossDist = atr14 * config.risk.stopLossAtrMultiplier;
+  const sizeMult = params.sizeMultiplier ?? 1;
+  const stopMult = params.stopMultiplier ?? 1;
+  const riskAmount = balance * config.risk.maxRiskPerTrade * sizeMult;
+  const stopLossDist = atr14 * config.risk.stopLossAtrMultiplier * stopMult;
 
   // Size in contracts (BTC)
   let quantity = riskAmount / stopLossDist;

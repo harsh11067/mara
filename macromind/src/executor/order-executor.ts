@@ -20,6 +20,8 @@ import {
   type OrderSpec,
 } from './order-builder.js';
 import { TradeStore } from '../store/trade-store.js';
+import { classifyRegime } from '../risk/regime.js';
+import { getCircuitBreakerState } from '../risk/circuit-breaker.js';
 import type { TradeDecision } from '../ai/types.js';
 
 const logger = createLogger('OrderExecutor');
@@ -168,6 +170,14 @@ export class OrderExecutor {
       const klines = await this.client.getPerpsKlines(symbol);
       const atr14 = this.client.calcATR(klines);
 
+      // Regime-conditional sizing + macro circuit breaker (transformation.md §4/§8)
+      const regime = classifyRegime(klines);
+      const breaker = getCircuitBreakerState();
+      const sizeMultiplier = regime.risk.sizeMultiplier * (breaker.active ? breaker.sizeMultiplier : 1);
+      const atrSource = atr14 > 0 ? 'live' : 'fallback_1.5pct'; // surfaced per mocks.md B1
+      if (breaker.active) logger.warn(`Circuit breaker active: ${breaker.reason} — size ×${breaker.sizeMultiplier}`);
+      logger.info(`Regime ${regime.regime}: size ×${regime.risk.sizeMultiplier}, stops ×${regime.risk.stopMultiplier}, ATR source=${atrSource}`);
+
       const sizing: OrderSizingParams = {
         balance:   availableUsdc,
         atr14:     atr14 > 0 ? atr14 : markPrice * 0.015, // fallback: 1.5% of price
@@ -175,6 +185,8 @@ export class OrderExecutor {
         symbolId:  tradeSymbol.symbolId,
         tickSize:  tradeSymbol.tickSize,
         stepSize:  tradeSymbol.stepSize,
+        sizeMultiplier,
+        stopMultiplier: regime.risk.stopMultiplier,
       };
 
       // ── Set leverage ───────────────────────────────────────────────────────

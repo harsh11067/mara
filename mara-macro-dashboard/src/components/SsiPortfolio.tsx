@@ -47,14 +47,23 @@ export default function SsiPortfolio({ holdings, rotationLogs }: SsiPortfolioPro
       <div style={{ borderBottom: "1px solid var(--border)", padding: "9px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
           Indices sourced via <span style={{ color: "var(--info)", fontWeight: 600 }}>SoSoValue Terminal API</span>
-          {" "}· 11 endpoints · MAG7 / DEFI / MEME / USSI
+          {" "}· 35 endpoints wired · MAG7 / DEFI / MEME / USSI
         </span>
         <ExternalLink size={12} color="var(--fg-4)" />
       </div>
 
       <div className="mc-scroll" style={{ overflowY: "auto", flex: 1, minHeight: 0, padding: "14px 16px" }}>
 
-        {/* Holdings */}
+        {/* Holdings — real SoDEX spot balances only (mocks.md A5) */}
+        {holdings.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "22px 10px", gap: 6 }}>
+            <Compass size={20} color="var(--border)" />
+            <span className="mara-body" style={{ color: "var(--fg-3)", textAlign: "center", fontSize: 12 }}>
+              No SSI holdings on the testnet spot account yet.
+              Fund via the SoDEX faucet, then rotations appear here — real balances only.
+            </span>
+          </div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
           {holdings.map(hold => (
             <div key={hold.id}>

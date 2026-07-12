@@ -1,0 +1,21 @@
+# Defeats the Render free-tier 15-minute spin-down (fixture.md §5 / transformation.md §1).
+# Pings /healthz every 10 minutes. Note: GitHub disables scheduled workflows in
+# public repos after 60 days without commits — Wave submissions reset the timer.
+name: keepalive
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend /healthz
+        run: |
+          URL="${{ vars.BACKEND_HEALTHZ_URL }}"
+          if [ -z "$URL" ]; then
+            echo "Set repo variable BACKEND_HEALTHZ_URL to https://<backend>.onrender.com/healthz"
+            exit 0
+          fi
+          curl -fsS --max-time 90 "$URL" && echo " — backend awake"

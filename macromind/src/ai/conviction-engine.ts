@@ -32,12 +32,116 @@ const STRONG_TRADE_CONVICTIONS = new Set<string>([
   'STRONG_BULL', 'STRONG_BEAR',
 ]);
 
-function convictionToAction(conviction: string, confidence: number): TradeAction {
+function convictionToAction(conviction: string, confidence: number, floor: number = MIN_CONFIDENCE_TO_TRADE): TradeAction {
   if (!TRADE_CONVICTIONS.has(conviction)) return 'NO_TRADE';
-  if (confidence < MIN_CONFIDENCE_TO_TRADE) return 'NO_TRADE';
+  if (confidence < floor) return 'NO_TRADE';
   // BULL/BEAR (non-strong) require higher confidence bar
-  if (!STRONG_TRADE_CONVICTIONS.has(conviction) && confidence < 75) return 'NO_TRADE';
+  if (!STRONG_TRADE_CONVICTIONS.has(conviction) && confidence < Math.max(75, floor)) return 'NO_TRADE';
   return conviction.includes('BULL') ? 'LONG' : 'SHORT';
+}
+
+/**
+ * Shared finalizer — turns a raw AI verdict (from the single-call engine OR the
+ * agentic tool-use loop) into a persisted TradeDecision. Both AI paths persist
+ * through here so the decision schema is identical regardless of engine.
+ */
+export function finalizeDecision(params: {
+  raw: AIDecisionRaw | null;
+  lastError?: string;
+  surprise: SurpriseResult;
+  market: MarketContext;
+  eventId?: string;
+  /** regime-conditional conviction floor (regime.ts); defaults to config floor */
+  convictionFloor?: number;
+  /** extra JSON persisted into market_context: agentTrace, debate, regime, dataQuality… */
+  extraContext?: Record<string, unknown>;
+}): TradeDecision {
+  const { raw, lastError, surprise, market, eventId, extraContext } = params;
+  const floor = params.convictionFloor ?? MIN_CONFIDENCE_TO_TRADE;
+  const id = uuidv4();
+  const timestamp = Date.now();
+
+  let conviction: Conviction;
+  let confidence: number;
+  let reasoning: string;
+  let keyFactors: string[];
+  let riskFlags: string[];
+  let action: TradeAction;
+  let noTradeReason: NoTradeReason | undefined;
+
+  if (!raw) {
+    conviction = 'NEUTRAL';
+    confidence = 0;
+    reasoning = `AI analysis failed after retries. Last error: ${lastError ?? 'unknown'}`;
+    keyFactors = [];
+    riskFlags = ['ai_failure'];
+    action = 'NO_TRADE';
+    noTradeReason = 'ai_failure';
+  } else {
+    conviction = raw.conviction as Conviction;
+    confidence = raw.confidence;
+    reasoning = raw.reasoning;
+    keyFactors = raw.key_factors;
+    riskFlags = raw.risk_flags;
+    action = convictionToAction(conviction, confidence, floor);
+    if (action === 'NO_TRADE') noTradeReason = 'low_conviction';
+  }
+
+  const decision: TradeDecision = {
+    id,
+    timestamp,
+    trigger: {
+      event: surprise.event,
+      surpriseScore: surprise.surpriseScore,
+      surpriseDirection: surprise.surpriseDirection,
+      actual: surprise.actual,
+      forecast: surprise.forecast,
+    },
+    conviction,
+    confidence,
+    reasoning,
+    keyFactors,
+    riskFlags,
+    newsHeadlines: market.recentHeadlines.slice(0, 5),
+    etfFlowDirection: market.etfFlowDirection,
+    currentPrice: market.btcPrice,
+    recentVolatility: market.atr14,
+    action,
+    noTradeReason,
+  };
+
+  DecisionStore.insert({
+    id,
+    eventId: eventId ?? null,
+    timestamp,
+    conviction,
+    confidence,
+    reasoning,
+    action,
+    noTradeReason: noTradeReason ?? null,
+    newsContext: market.recentHeadlines.slice(0, 10),
+    marketContext: {
+      eventName: surprise.event,
+      actual: surprise.actual,
+      forecast: surprise.forecast,
+      btcPrice: market.btcPrice,
+      btcChange1h: market.btcChange1h,
+      btcChange24h: market.btcChange24h,
+      btcVolume24h: market.btcVolume24h,
+      atr14: market.atr14,
+      etfFlowDirection: market.etfFlowDirection,
+      surpriseScore: surprise.surpriseScore,
+      surpriseDirection: surprise.surpriseDirection,
+      ...extraContext,
+    },
+  });
+
+  logger.info(`Decision: ${conviction} (${confidence}%) → ${action}`, {
+    event: surprise.event,
+    noTradeReason,
+  });
+
+  return decision;
 }
 
 // ── Main engine ───────────────────────────────────────────────────────────────
@@ -123,85 +227,11 @@ export class ConvictionEngine {
       }
     }
 
-    // ── Determine action ─────────────────────────────────────────────────────
-    let conviction: Conviction;
-    let confidence: number;
-    let reasoning: string;
-    let keyFactors: string[];
-    let riskFlags: string[];
-    let action: TradeAction;
-    let noTradeReason: NoTradeReason | undefined;
-
-    if (!raw) {
-      conviction = 'NEUTRAL';
-      confidence = 0;
-      reasoning = `AI analysis failed after 3 attempts. Last error: ${lastError}`;
-      keyFactors = [];
-      riskFlags = ['ai_failure'];
-      action = 'NO_TRADE';
-      noTradeReason = 'ai_failure';
-    } else {
-      conviction = raw.conviction as Conviction;
-      confidence = raw.confidence;
-      reasoning = raw.reasoning;
-      keyFactors = raw.key_factors;
-      riskFlags = raw.risk_flags;
-      action = convictionToAction(conviction, confidence);
-      if (action === 'NO_TRADE') noTradeReason = 'low_conviction';
-    }
-
-    // ── Build full decision ──────────────────────────────────────────────────
-    const decision: TradeDecision = {
-      id,
-      timestamp,
-      trigger: {
-        event: surprise.event,
-        surpriseScore: surprise.surpriseScore,
-        surpriseDirection: surprise.surpriseDirection,
-        actual: surprise.actual,
-        forecast: surprise.forecast,
-      },
-      conviction,
-      confidence,
-      reasoning,
-      keyFactors,
-      riskFlags,
-      newsHeadlines: market.recentHeadlines.slice(0, 5),
-      etfFlowDirection: market.etfFlowDirection,
-      currentPrice: market.btcPrice,
-      recentVolatility: market.atr14,
-      action,
-      noTradeReason,
-    };
-
-    // ── Persist to DB ────────────────────────────────────────────────────────
-    DecisionStore.insert({
-      id,
-      eventId: eventId ?? null,
-      timestamp,
-      conviction,
-      confidence,
-      reasoning,
-      action,
-      noTradeReason: noTradeReason ?? null,
-      newsContext: market.recentHeadlines.slice(0, 10),
-      marketContext: {
-        btcPrice: market.btcPrice,
-        btcChange1h: market.btcChange1h,
-        btcChange24h: market.btcChange24h,
-        btcVolume24h: market.btcVolume24h,
-        atr14: market.atr14,
-        etfFlowDirection: market.etfFlowDirection,
-        surpriseScore: surprise.surpriseScore,
-        surpriseDirection: surprise.surpriseDirection,
-      },
+    // ── Finalize via the shared helper (identical schema to the agentic path) ─
+    void id; void timestamp;
+    return finalizeDecision({
+      raw, lastError, surprise, market, eventId,
+      extraContext: { engine: 'single_call' },
     });
-
-    logger.info(`Decision: ${conviction} (${confidence}%) → ${action}`, {
-      event: surprise.event,
-      noTradeReason,
-    });
-
-    return decision;
   }
 }

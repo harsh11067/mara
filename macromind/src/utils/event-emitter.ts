@@ -118,6 +118,16 @@ export interface AppEvents {
     unrealizedPnl:    number;
     ts:               number;
   };
+  /** Live agentic tool-use trace — streamed to the dashboard reasoning card. */
+  AGENT_TRACE: {
+    runId:    string;
+    step:     number;
+    kind:     'thinking' | 'tool_call' | 'tool_result' | 'final' | 'error';
+    tool?:    string;
+    args?:    Record<string, unknown>;
+    summary:  string;
+    ts:       number;
+  };
 }
 
 export const appEvents = new TypedEventEmitter<AppEvents>();

@@ -109,6 +109,33 @@ function runMigrations(db: Database.Database): void {
       kill_switch_active  INTEGER NOT NULL DEFAULT 0
     );
 
+    -- Macro-catalyst corpus: historical macro prints tagged with BTC/ETH
+    -- forward returns + regime labels (MARA's data moat — fixture.md §C)
+    CREATE TABLE IF NOT EXISTS macro_catalysts (
+      id            TEXT PRIMARY KEY,
+      event_type    TEXT NOT NULL,
+      date          TEXT NOT NULL,
+      actual        REAL,
+      forecast      REAL,
+      previous      REAL,
+      surprise_z    REAL,
+      direction     TEXT,             -- 'above' | 'below' | 'inline'
+      regime_label  TEXT,             -- regime at the print date
+      btc_ret_1d    REAL,
+      btc_ret_3d    REAL,
+      btc_ret_7d    REAL,
+      btc_ret_30d   REAL,
+      eth_ret_1d    REAL,
+      eth_ret_3d    REAL,
+      eth_ret_7d    REAL,
+      eth_ret_30d   REAL,
+      seeded_at     INTEGER NOT NULL,
+      UNIQUE(event_type, date)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_corpus_event ON macro_catalysts(event_type);
+    CREATE INDEX IF NOT EXISTS idx_corpus_dir   ON macro_catalysts(direction);
+
     -- Indices for fast lookups
     CREATE INDEX IF NOT EXISTS idx_events_date   ON events(date);
     CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);

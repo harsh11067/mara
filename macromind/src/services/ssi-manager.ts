@@ -134,7 +134,7 @@ export class SSIManager {
           || sym.symbol.toLowerCase().includes('ssi');
         if (isSSI) {
           ssiMap.set(sym.symbol, {
-            symbolId: 0, // spot symbols might not have numeric IDs exposed yet
+            symbolId: sym.symbolId, // live numeric ID from /spot/markets/symbols
             tickSize: sym.tickSize ?? '0.0001',
             stepSize: sym.stepSize ?? '0.01',
           });
@@ -254,13 +254,19 @@ export class SSIManager {
         continue;
       }
 
-      // Spot BatchNewOrder doesn't use symbolID in the same way
-      // We use the batch API with accountID + list of orders
+      // Real numeric symbolID resolved live from /spot/markets/symbols
+      // (mocks.md B5 — the old symbolID:0 stub could never execute)
+      if (!sym.symbolId || sym.symbolId <= 0) {
+        logger.warn(`SSI rotation: ${order.symbol} has no numeric symbolID — skipping`);
+        results.push(`SKIP ${order.symbol}: no symbolID`);
+        failed++;
+        continue;
+      }
       const qty = stripTrailingZeros(order.quantity.toFixed(6));
       const batchReq = {
         accountID: this.accountId,
         orders: [{
-          symbolID: 0, // Will be resolved from symbol name if needed
+          symbolID: sym.symbolId,
           clOrdID:  `ssi-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           side:     order.side === 'BUY' ? OrderSide.Buy : OrderSide.Sell,
           type:     OrderType.Market,

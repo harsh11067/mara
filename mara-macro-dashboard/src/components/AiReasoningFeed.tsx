@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect, FormEvent } from "react";
-import { Brain, Send, Newspaper, RefreshCw, ChevronDown, ChevronRight, Settings2 } from "lucide-react";
-import { AiReasoning, DirectionType } from "../types";
+import { Brain, Send, Newspaper, RefreshCw, ChevronDown, ChevronRight, Settings2, Wrench, MessagesSquare } from "lucide-react";
+import { AiReasoning, DirectionType, AgentTraceStep } from "../types";
 import PanelHeader from "./PanelHeader";
 
 interface AiReasoningFeedProps {
   reasonings: AiReasoning[];
   onTriggerSimulation: (eventName: string, actual: string, forecast: string) => void;
   isSimulating: boolean;
+  /** live agentic tool-use trace streamed over WebSocket */
+  agentTrace: AgentTraceStep[];
+  backendOnline: boolean;
 }
 
 const INSTRUMENTS = [
@@ -37,7 +40,23 @@ function nowStamp(): string {
   return new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true });
 }
 
-export default function AiReasoningFeed({ reasonings, onTriggerSimulation, isSimulating }: AiReasoningFeedProps) {
+function traceIcon(kind: AgentTraceStep["kind"]) {
+  if (kind === "tool_call") return "→";
+  if (kind === "tool_result") return "←";
+  if (kind === "final") return "◆";
+  if (kind === "error") return "✗";
+  return "…";
+}
+
+function traceColor(kind: AgentTraceStep["kind"]): string {
+  if (kind === "tool_call") return "var(--info)";
+  if (kind === "tool_result") return "var(--fg-3)";
+  if (kind === "final") return "var(--pos)";
+  if (kind === "error") return "var(--neg)";
+  return "var(--fg-4)";
+}
+
+export default function AiReasoningFeed({ reasonings, onTriggerSimulation, isSimulating, agentTrace, backendOnline }: AiReasoningFeedProps) {
   const [expandedId, setExpandedId]       = useState<string | null>(reasonings[0]?.id ?? null);
   const [instIdx, setInstIdx]             = useState(0);
   const [actual, setActual]               = useState("0.5%");
@@ -81,7 +100,10 @@ export default function AiReasoningFeed({ reasonings, onTriggerSimulation, isSim
       <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
           <Settings2 size={16} color="var(--pos)" />
-          <span className="mara-h2" style={{ fontSize: 14 }}>Macro Release Simulator (Autonomous Loop Trigger)</span>
+          <span className="mara-h2" style={{ fontSize: 14 }}>Run Live Cycle — Real Pipeline Trigger</span>
+          <span className="mara-micro" style={{ marginLeft: "auto", color: "var(--fg-4)", textTransform: "none", letterSpacing: 0 }}>
+            {backendOnline ? "runs the REAL Gemini agent server-side" : "backend offline"}
+          </span>
         </div>
         <form onSubmit={handleSubmit}>
           <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr auto", gap: 10, alignItems: "flex-end" }}>
@@ -126,14 +148,43 @@ export default function AiReasoningFeed({ reasonings, onTriggerSimulation, isSim
               style={{ height: 44, whiteSpace: "nowrap" }}
             >
               {isSimulating ? (
-                <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /> Scanning…</>
+                <><RefreshCw size={14} style={{ animation: "spin 1s linear infinite" }} /> Agent running…</>
               ) : (
-                <><Send size={14} /> Inject Target Macro</>
+                <><Send size={14} /> Run Live Cycle</>
               )}
             </button>
           </div>
         </form>
       </div>
+
+      {/* ── Live agentic tool-use trace (Edgework rule: every number = a tool call) ── */}
+      {(isSimulating || agentTrace.length > 0) && (
+        <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", flexShrink: 0, maxHeight: 170, overflowY: "auto" }} className="mc-scroll">
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+            <Wrench size={13} color="var(--info)" />
+            <span className="mara-label">AGENT TOOL-CALL TRACE (LIVE)</span>
+            {isSimulating && <RefreshCw size={11} color="var(--info)" style={{ animation: "spin 1s linear infinite" }} />}
+          </div>
+          {agentTrace.length === 0 ? (
+            <span className="mara-micro" style={{ color: "var(--fg-4)", textTransform: "none", letterSpacing: 0 }}>
+              Waiting for the agent to pick up the event…
+            </span>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {agentTrace.map((t) => (
+                <div key={`${t.runId}-${t.step}`} style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: traceColor(t.kind), flexShrink: 0, width: 12 }}>
+                    {traceIcon(t.kind)}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: t.kind === "final" ? "var(--pos)" : "var(--fg-3)", lineHeight: 1.5, wordBreak: "break-word" }}>
+                    {t.summary}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Feed */}
       <div className="mc-scroll" style={{ padding: "14px 18px", overflowY: "auto", flex: 1, minHeight: 0 }}>
@@ -220,8 +271,40 @@ export default function AiReasoningFeed({ reasonings, onTriggerSimulation, isSim
                   {/* Reasoning */}
                   {item.reasoning && (
                     <div style={{ marginBottom: 12 }}>
-                      <span className="mara-label" style={{ display: "block", marginBottom: 6 }}>AI ANALYSIS</span>
+                      <span className="mara-label" style={{ display: "block", marginBottom: 6 }}>
+                        AI ANALYSIS{item.engine === "agentic_tool_use" ? " · AGENTIC (TOOL-GROUNDED)" : ""}
+                      </span>
                       <p className="mara-body" style={{ lineHeight: 1.6 }}>{item.reasoning}</p>
+                    </div>
+                  )}
+
+                  {/* Bull/Bear/Synthesiser debate */}
+                  {item.debate && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <MessagesSquare size={12} color="var(--violet, #7b6cff)" />
+                        <span className="mara-label">MACRO DEBATE — BULL vs BEAR vs SYNTHESISER</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ borderLeft: "2px solid var(--pos)", paddingLeft: 10 }}>
+                          <span className="mara-micro mara-pos" style={{ display: "block" }}>BULL</span>
+                          <span className="mara-body" style={{ fontSize: 12, color: "var(--fg-2)" }}>{item.debate.bull_case}</span>
+                        </div>
+                        <div style={{ borderLeft: "2px solid var(--neg)", paddingLeft: 10 }}>
+                          <span className="mara-micro mara-neg" style={{ display: "block" }}>BEAR</span>
+                          <span className="mara-body" style={{ fontSize: 12, color: "var(--fg-2)" }}>{item.debate.bear_case}</span>
+                        </div>
+                        <div style={{ borderLeft: "2px solid var(--info)", paddingLeft: 10 }}>
+                          <span className="mara-micro" style={{ display: "block", color: "var(--info)" }}>SYNTHESIS</span>
+                          <span className="mara-body" style={{ fontSize: 12, color: "var(--fg-2)" }}>{item.debate.synthesis}</span>
+                        </div>
+                        {item.debate.dissent && (
+                          <div style={{ borderLeft: "2px solid var(--amber, #e8a900)", paddingLeft: 10 }}>
+                            <span className="mara-micro mara-amber" style={{ display: "block" }}>DISSENT</span>
+                            <span className="mara-body" style={{ fontSize: 12, color: "var(--fg-3)" }}>{item.debate.dissent}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
