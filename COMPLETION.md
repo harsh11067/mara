@@ -92,7 +92,9 @@ curl -X POST localhost:3001/api/trigger -H 'Content-Type: application/json' \
 cd ../mara-macro-dashboard && npm run dev             # open /, /terminal, /judges, /diag, /track
 ```
 
-## F. Deploy status
+## F. Deploy status (2026-07-12, post-deploy)
+0. ✅ **Render backend LIVE** — `https://mara-backend-28va.onrender.com` — `/healthz` OK, `/api/diag` **7/8 green** (only attestation ✗, expected: 🔒 faucet). Neon replication proved itself: the hosted instance restored the local session's DB snapshot (50 decisions). Keep-alive repo variable `BACKEND_HEALTHZ_URL` is set and the workflow is live.
+   **Frontend**: Vercel is blocked at the account level (token AND OAuth both 403 on project-create; account `limited: true` — verify the Vercel account to unblock). Workaround shipped in commit `7a6abc2`: the backend serves the built dashboard itself (single-origin). To activate, change the Render build command to `npm install && cd ../mara-macro-dashboard && npm install && npm run build` — then ONE public URL serves landing + terminal + API + WS.
 1. ✅ **GitHub pushed** — `github.com/harsh11067/mara` @ main (commit `31a014b`), secrets verified out of the tree (`.env`/`*.db`/`deploy-all.sh` gitignored, secret scan clean).
 2. 🟨 **Render + Vercel + keepalive var — one command left**: run `bash deploy-all.sh` from the repo root (creates the Render web service `mara-backend` with all env vars, sets the `BACKEND_HEALTHZ_URL` repo variable, deploys the frontend to Vercel with `VITE_API_URL` baked in, waits for `/healthz`). The script embeds the chat-pasted tokens — **rotate them and delete the script afterwards**.
 3. 🔒 SoDEX faucet → fund `0x2633…` gas → `npm run deploy:testnet` in `mara-attestation` → set `VALUECHAIN_RPC=https://testnet.valuechain.xyz` + new `MARA_CONTRACT_ADDRESS` on Render.
