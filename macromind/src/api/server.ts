@@ -20,6 +20,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
 import { createLogger } from '../utils/logger.js';
@@ -484,6 +487,18 @@ app.get('/api/simulate-order', async (c) => {
     return c.json({ error: String(err).slice(0, 160) }, 503);
   }
 });
+
+// ── Static dashboard hosting (single-origin deploy) ───────────────────────────
+// When the dashboard build exists (Render buildCommand builds it), serve it from
+// this same server: no CORS, same-origin WS, one public URL. Registered after all
+// /api routes so the API always wins. Local dev (Vite on :3000) is unaffected.
+const DASHBOARD_DIST = '../mara-macro-dashboard/dist';
+if (existsSync(join(process.cwd(), DASHBOARD_DIST, 'index.html'))) {
+  app.use('/*', serveStatic({ root: DASHBOARD_DIST }));
+  // SPA fallback: any non-API, non-asset route → index.html (react-router)
+  app.get('*', serveStatic({ path: join(DASHBOARD_DIST, 'index.html') }));
+  logger.info(`Serving dashboard from ${DASHBOARD_DIST} (single-origin mode)`);
+}
 
 // ── Start server ───────────────────────────────────────────────────────────────
 export function startApiServer(): void {
