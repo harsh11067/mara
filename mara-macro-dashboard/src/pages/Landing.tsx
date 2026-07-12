@@ -15,7 +15,7 @@ import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useSpring, useInView } from "motion/react";
 import {
   ArrowRight, ChevronDown, Radar, Sigma, MessagesSquare, ShieldCheck,
-  Zap, Link2, TerminalSquare, FlaskConical, ScrollText, Bot,
+  Zap, Link2, TerminalSquare, ScrollText, Bot, Swords, Clock,
 } from "lucide-react";
 import { api } from "../api";
 
@@ -243,9 +243,10 @@ export default function Landing() {
           MARA<span style={{ color: "var(--fg-4)" }}>:</span><span className="mara-spectral-text">OP</span>
         </span>
         <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+          <Link to="/duel" style={{ color: "var(--fg-3)", fontSize: 12, textDecoration: "none", letterSpacing: ".08em" }}>DUEL</Link>
+          <Link to="/replay" style={{ color: "var(--fg-3)", fontSize: 12, textDecoration: "none", letterSpacing: ".08em" }}>REPLAY</Link>
           <Link to="/track" style={{ color: "var(--fg-3)", fontSize: 12, textDecoration: "none", letterSpacing: ".08em" }}>TRACK</Link>
           <Link to="/diag" style={{ color: "var(--fg-3)", fontSize: 12, textDecoration: "none", letterSpacing: ".08em" }}>DIAG</Link>
-          <Link to="/judges" style={{ color: "var(--fg-3)", fontSize: 12, textDecoration: "none", letterSpacing: ".08em" }}>JUDGES</Link>
           <Link to="/terminal" className="landing-cta landing-cta--ghost" style={{ padding: "9px 18px", fontSize: 12 }}>
             <TerminalSquare size={14} /> Terminal
           </Link>
@@ -280,8 +281,8 @@ export default function Landing() {
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             transition={{ duration: 1.1, delay: .25, ease: [0.21, 0.6, 0.35, 1] }}
           >
-            THE MACRO<br />
-            <span className="mara-spectral-text">HAS A PULSE.</span>
+            The macro<br />
+            has <em>a pulse.</em>
             <span className="landing-caret" />
           </motion.h1>
 
@@ -301,8 +302,8 @@ export default function Landing() {
             <Link to="/terminal" className="landing-cta landing-cta--primary">
               Enter the Terminal <ArrowRight size={16} />
             </Link>
-            <Link to="/judges" className="landing-cta landing-cta--ghost">
-              <FlaskConical size={15} /> 60-second judge script
+            <Link to="/duel" className="landing-cta landing-cta--ghost">
+              <Swords size={15} /> Challenge the agent
             </Link>
           </motion.div>
 
@@ -354,8 +355,8 @@ export default function Landing() {
           style={{ textAlign: "center", marginBottom: "10vh", position: "relative", zIndex: 1 }}
         >
           <span className="landing-kicker">The pipeline</span>
-          <h2 style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "clamp(30px,5vw,52px)", color: "var(--fg)", marginTop: 14, letterSpacing: "-0.02em" }}>
-            From print to position<br /><span className="mara-spectral-text">in one unbroken chain.</span>
+          <h2 className="mara-serif" style={{ fontSize: "clamp(34px,5.4vw,58px)", color: "var(--fg)", marginTop: 14, lineHeight: 1.05 }}>
+            From print to position<br /><em>in one unbroken chain.</em>
           </h2>
         </motion.div>
 
@@ -395,6 +396,68 @@ export default function Landing() {
         </motion.div>
       </section>
 
+      {/* ═══ PLAY — Signal Duel + Time Machine ═══ */}
+      <section style={{ position: "relative", padding: "12vh 24px", zIndex: 1 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: .8 }}
+          style={{ maxWidth: 1080, margin: "0 auto" }}
+        >
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <span className="landing-kicker">Don't just watch it — play it</span>
+            <h2 className="mara-serif" style={{ fontSize: "clamp(32px,4.8vw,52px)", color: "var(--fg)", marginTop: 14, lineHeight: 1.05 }}>
+              Think you read macro<br /><em>better than the machine?</em>
+            </h2>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 22 }}>
+            <motion.div
+              className="landing-tier landing-tier--hot"
+              initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-10%" }}
+              transition={{ duration: .7 }}
+            >
+              <span className="tier-name" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Swords size={14} /> SIGNAL DUEL
+              </span>
+              <span className="tier-line">
+                Call BULL or BEAR on a macro print before the agent speaks, staked in MARA credits.
+                The real pipeline runs — live Gemini tool calls, live data — and the verdict resolves your
+                stake in real time. Beat the machine, double your credits, climb the leaderboard.
+              </span>
+              <ul>
+                <li>1,000 free credits on sign-up (Google, wallet, or guest pass)</li>
+                <li>Same live pipeline the desk runs — nothing scripted</li>
+                <li>Public leaderboard: accuracy vs the agent</li>
+              </ul>
+              <Link to="/duel" className="landing-cta landing-cta--primary" style={{ marginTop: 8, alignSelf: "flex-start", padding: "12px 22px", fontSize: 13 }}>
+                Enter the arena <ArrowRight size={14} />
+              </Link>
+            </motion.div>
+
+            <motion.div
+              className="landing-tier"
+              initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-10%" }}
+              transition={{ duration: .7, delay: .12 }}
+            >
+              <span className="tier-name" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Clock size={14} /> TIME MACHINE
+              </span>
+              <span className="tier-line">
+                Scrub two years of real CPI, NFP and PCE prints through MARA's decision logic with zero
+                lookahead — early prints honestly say "insufficient history". Watch the equity curve build
+                print by print from real BTC forward returns.
+              </span>
+              <ul>
+                <li>100+ real prints, real close-to-close returns</li>
+                <li>No-lookahead analog evidence — the agent's own memory</li>
+                <li>Instant scrubbing, no API cost, fully deterministic</li>
+              </ul>
+              <Link to="/replay" className="landing-cta landing-cta--ghost" style={{ marginTop: 8, alignSelf: "flex-start", padding: "12px 22px", fontSize: 13 }}>
+                Open the time machine <ArrowRight size={14} />
+              </Link>
+            </motion.div>
+          </div>
+        </motion.div>
+      </section>
+
       {/* ═══ AGENT-CALLABLE ═══ */}
       <section style={{ position: "relative", padding: "12vh 24px", zIndex: 1 }}>
         <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 40, alignItems: "center" }}>
@@ -404,8 +467,8 @@ export default function Landing() {
             <span className="landing-kicker" style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Bot size={14} color="var(--spectral-b)" /> Built for agents, not just humans
             </span>
-            <h2 style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "clamp(26px,3.6vw,40px)", color: "var(--fg)", margin: "16px 0 14px", letterSpacing: "-0.02em" }}>
-              Your AI can call<br /><span className="mara-spectral-text">MARA's brain directly.</span>
+            <h2 className="mara-serif" style={{ fontSize: "clamp(30px,4vw,46px)", color: "var(--fg)", margin: "16px 0 14px", lineHeight: 1.05 }}>
+              Your AI can call<br /><em>MARA's brain directly.</em>
             </h2>
             <p className="landing-sub" style={{ fontSize: 15.5 }}>
               <code style={{ color: "var(--spectral-a)" }}>mcp-mara</code> exposes eight tools over the Model Context Protocol:
@@ -443,8 +506,8 @@ export default function Landing() {
         >
           <div style={{ textAlign: "center", marginBottom: 44 }}>
             <span className="landing-kicker">One engine, three altitudes</span>
-            <h2 style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "clamp(28px,4.4vw,46px)", color: "var(--fg)", marginTop: 14, letterSpacing: "-0.02em" }}>
-              Watch it. Hear it.<br /><span className="mara-spectral-text">Let it trade.</span>
+            <h2 className="mara-serif" style={{ fontSize: "clamp(32px,4.8vw,52px)", color: "var(--fg)", marginTop: 14, lineHeight: 1.05 }}>
+              Watch it. Hear it.<br /><em>Let it trade.</em>
             </h2>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 22 }}>
@@ -474,9 +537,9 @@ export default function Landing() {
           style={{ maxWidth: 760, margin: "0 auto", textAlign: "center" }}
         >
           <ScrollText size={22} color="var(--spectral-c)" style={{ marginBottom: 18 }} />
-          <h2 style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "clamp(28px,4.4vw,46px)", color: "var(--fg)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+          <h2 className="mara-serif" style={{ fontSize: "clamp(32px,4.8vw,52px)", color: "var(--fg)", lineHeight: 1.08 }}>
             Every thesis dated.<br />
-            <span className="mara-spectral-text">Every outcome resolved.</span><br />
+            <em>Every outcome resolved.</em><br />
             Losses included.
           </h2>
           <p className="landing-sub" style={{ margin: "22px auto 0" }}>

@@ -10,8 +10,12 @@
 - **35 SoSoValue endpoints** across all 9 modules (was 11), TTL-cached for the 20 req/min budget, live-probed on `/diag`.
 - **Regime-adaptive risk + macro circuit breaker** — BULL_QUIET…CRASH classification scales position size, stops, and the conviction floor; a pre-event window de-risks around CPI/FOMC/NFP.
 - **`mcp-mara`** — an 8-tool Model Context Protocol server so any AI client (Claude Desktop, Cursor, VS Code) can call MARA's calendar, corpus, conviction, risk state, track record, trade simulator, and (operator-gated) real execution.
-- **Judge surfaces** — `/judges` (60-second script + one-click sample theses), `/diag` (live integration proof with latency), `/healthz` + GitHub Actions keep-alive, Neon Postgres snapshot persistence for Render's ephemeral disk.
-- **Spectral-glow cinematic landing page** — near-black, scroll-driven pipeline narrative: a scroll-drawn ECG pulse runs through six overprint ghost-type stages (DETECT→ATTEST), a live SoDEX ticker tape, count-up proof metrics straight from `/api/diag`, aurora hero, and a spectral scroll-progress bar. The terminal picked up the same dark-aero language (scanlines, glow hovers, spectral scrollbars).
+- **Proof surfaces** — `/diag` (live integration proof with latency), `/track`, `/healthz` + GitHub Actions keep-alive, Neon Postgres snapshot persistence for Render's ephemeral disk.
+- **"Amber Phosphor" design system (Wave 3.5)** — a dealing-desk instrument look: molten amber phosphor + ember coral on warm oil-black, bone text, Instrument Serif editorial display, custom reticle cursor, phosphor scrollbars on both axes, corner-bracket panels, CRT scanlines. The landing keeps the scroll-drawn ECG pipeline narrative, live SoDEX ticker tape and count-up proof metrics from `/api/diag`.
+- **Accounts + MARA credits (Wave 3.5)** — sign in with Google (server-verified ID token), any browser wallet (EIP-6963 discovery → nonce → `personal_sign` → server-side EIP-191 recovery), or a one-click guest pass. New accounts get 1,000 credits (guests 400) in an append-only ledger.
+- **⚔️ Signal Duel (`/duel`)** — stake credits on BULL or BEAR before the agent speaks; the REAL pipeline (live Gemini tool calls, live data, on-chain attestation) resolves your duel over the WebSocket. Win pays 2×, NEUTRAL pushes, a pipeline failure refunds your stake. Public leaderboard tracks accuracy vs the agent.
+- **🕰️ Time Machine (`/replay`)** — scrub 100+ real historical macro prints through MARA's decision logic with **zero lookahead** (early prints honestly report "insufficient history"); real BTC forward returns, regime-sized hypothetical P&L, autoplay + equity curve. Deterministic and free — no LLM calls.
+- **Beginner onboarding** — a 5-step walkthrough on first visit (re-open anytime via the "?" button).
 - **Telegram broadcast** — every signal (including NO_TRADE passes) posts to the channel; wins and losses alike.
 - **Launch video script** — [script.md](script.md): a 90-second (with 60s cut) shot-by-shot script where every frame is a real capture.
 
@@ -103,7 +107,10 @@ Protects capital by running validation rules before placing orders:
     SODEX_API_KEY_NAME=macromind-agent
     SODEX_API_KEY_PRIVATE=your_wallet_private_key
     SODEX_ACCOUNT_ID=your_sodex_account_id
+    # Optional — enables "Continue with Google" (same OAuth client ID both sides):
+    GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
     ```
+    > **Google Sign-In setup (2 min):** [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → *Create OAuth client ID* → Web application → add your site origin (e.g. `https://mara-neon.vercel.app` and `http://localhost:3000`) to *Authorized JavaScript origins* → copy the client ID into `GOOGLE_CLIENT_ID` (backend env) **and** `VITE_GOOGLE_CLIENT_ID` (frontend env / `.env.production`). Wallet and guest login work with zero configuration.
 
 ### Frontend Configuration (`mara-macro-dashboard`)
 1.  Navigate to the frontend directory:
@@ -160,6 +167,12 @@ The backend Hono server exposes the following REST routes:
 | **POST**| `/api/trigger` | Injects a simulated macro event to trigger the pipeline end-to-end. |
 | **POST**| `/api/kill-switch` | Forces an emergency halt, cancels open orders, and closes positions. |
 | **POST**| `/api/kill-switch/reset` | Resets the kill switch state and resumes scanning. |
+| **POST**| `/api/auth/guest` · `/api/auth/google` · `/api/auth/wallet/nonce` · `/api/auth/wallet/verify` | Accounts: guest pass, verified Google ID token, signature-verified wallet login. |
+| **GET** | `/api/auth/me` | Session introspection + MARA credits balance + ledger tail. |
+| **POST**| `/api/duel/start` | Stake credits on BULL/BEAR; the live pipeline resolves the duel. |
+| **GET** | `/api/duel/mine` · `/api/duel/leaderboard` | Your duel record; public leaderboard vs the agent. |
+| **GET** | `/api/replay/events` · `/api/replay?event_type=CPI` | Time Machine: no-lookahead corpus replay timelines. |
+| **GET** | `/api/regime` · `/api/markets` · `/api/ssi` · `/api/diag` · `/api/track` · `/api/backtest` | Live regime + breaker, tickers, SSI state, integration diagnostics, track record, backtest. |
 
 ---
 

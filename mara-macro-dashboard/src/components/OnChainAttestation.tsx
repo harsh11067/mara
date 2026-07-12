@@ -230,7 +230,7 @@ export default function OnChainAttestation({ refreshSignal = 0 }: { refreshSigna
                 <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--info)' }}>
                   keccak256(id ‖ event ‖ ts ‖ conviction ‖ confidence)
                 </code>
-                . Judges can verify any decision from{' '}
+                . Anyone can verify any decision from{' '}
                 <code style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--info)' }}>
                   GET /api/decisions
                 </code>{' '}

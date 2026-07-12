@@ -153,7 +153,7 @@ export default function Track() {
               {track.theses.length === 0 && (
                 <div className="landing-stage" style={{ textAlign: "center", padding: 30 }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-3)" }}>
-                    No theses yet — run a live cycle from <Link to="/judges" style={{ color: "var(--spectral-a)" }}>/judges</Link> and it lands here with a signal ID.
+                    No theses yet — trigger a live cycle from the <Link to="/terminal" style={{ color: "var(--spectral-a)" }}>terminal</Link> (or stake one in <Link to="/duel" style={{ color: "var(--spectral-a)" }}>Signal Duel</Link>) and it lands here with a signal ID.
                   </span>
                 </div>
               )}

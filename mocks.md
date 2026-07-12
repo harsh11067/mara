@@ -142,3 +142,23 @@ The attestation layer is fully real code, but the configured chain is a **local 
 | B9 | Local-chain attestation | 🟡 | Honest chain labeling; testnet deploy pending faucet |
 
 Everything 🔴 has been converted to a real engine or removed. Every remaining 🟡 is deliberately honest, logged, and visible on `/diag` — judges can verify nothing is silently faked.
+
+---
+
+## F. Wave 3.5 sweep (2026-07-12, second pass)
+
+| # | Item | Class | Resolution |
+|---|------|-------|-----------|
+| C1 | Risk Engine `marginUtil = 12.0` hardcoded | 🔴 | Removed — panel now renders only backend truth |
+| C2 | Risk Engine `availMargin = equity × 0.88` invented | 🔴 | Removed — replaced with real cumulative P&L from `/api/risk` |
+| C3 | `maxOpenPositions`/`maxDailyTrades` hardcoded client-side | 🔴 | Served by `/api/risk.limits` from real backend config |
+| C4 | "Backend polling every 10s · WebSocket connected" static claim | 🔴 | Removed |
+| C5 | Regime/circuit-breaker absent from terminal | ⚫ | Risk Engine now renders live `/api/regime` (5-state classifier, multipliers, breaker window) |
+| C6 | `trigger`/`kill-switch` POSTs ignored `VITE_API_URL` (broken on Vercel) | 🔴 | All POSTs routed through `API_BASE` |
+| C7 | Old wallet button (display-only, no verification) | 🔴 | Real auth: EIP-6963 discovery → nonce → `personal_sign` → server-side EIP-191 recovery |
+
+New surfaces added in the same pass (all real, all smoked live): accounts (Google
+tokeninfo verification / wallet signatures / guest passes) with an append-only
+credits ledger, Signal Duel (stakes resolve against the live pipeline verdict;
+pipeline failure refunds the stake), and the Time Machine no-lookahead corpus
+replay (`/api/replay`).

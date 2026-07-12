@@ -48,6 +48,10 @@ import { getDb } from '../store/db.js';
 import { globalCache } from '../utils/ttl-cache.js';
 import { broadcastTrade, broadcastKillSwitch, broadcastDecision } from '../services/telegram.js';
 import { BTC_CURRENCY_ID } from '../services/sosovalue-client.js';
+import { authRoutes } from './auth.js';
+import { duelRoutes } from './duel.js';
+import { replayRoutes } from './replay.js';
+import { tryAcquireTrigger } from './trigger-lock.js';
 
 const logger = createLogger('API');
 
@@ -138,6 +142,14 @@ app.get('/api/risk', async (c) => {
     openPositions: openCount,
     totalTrades: allTrades.length,
     winRate,
+    // Real configured limits — the dashboard renders these, never hardcodes them
+    limits: {
+      maxOpenPositions: config.risk.maxOpenPositions,
+      maxDailyTrades: config.risk.maxDailyTrades,
+      maxDrawdownPct: config.risk.maxDrawdown * 100,
+      maxLeverage: config.risk.maxLeverage,
+      maxRiskPerTradePct: config.risk.maxRiskPerTrade * 100,
+    },
   });
 });
 
@@ -174,9 +186,7 @@ app.get('/api/performance', (c) => {
   return c.json(series);
 });
 
-// ── POST /api/trigger — judge-triggerable live cycle (rate-limited) ────────────
-let _lastTriggerAt = 0;
-const TRIGGER_COOLDOWN_MS = 20_000; // fixture.md §5: server-side cooldown, keys stay server-side
+// ── POST /api/trigger — live cycle, rate-limited server-side ──────────────────
 app.post('/api/trigger', async (c) => {
   type TriggerBody = { event?: string; actual?: number; forecast?: number; previous?: number };
   let body: TriggerBody;
@@ -194,13 +204,12 @@ app.post('/api/trigger', async (c) => {
     return c.json({ error: 'Kill switch is active — reset before triggering' }, 403);
   }
 
-  const sinceLast = Date.now() - _lastTriggerAt;
-  if (sinceLast < TRIGGER_COOLDOWN_MS) {
+  const lock = tryAcquireTrigger();
+  if (!lock.ok) {
     return c.json({
-      error: `Live cycle already running — retry in ${Math.ceil((TRIGGER_COOLDOWN_MS - sinceLast) / 1000)}s (global cooldown protects API budgets)`,
+      error: `Live cycle already running — retry in ${lock.retryInSec}s (global cooldown protects API budgets)`,
     }, 429);
   }
-  _lastTriggerAt = Date.now();
 
   // Fire async — don't await so we return immediately
   const analyzer = new Analyzer();
@@ -487,6 +496,11 @@ app.get('/api/simulate-order', async (c) => {
     return c.json({ error: String(err).slice(0, 160) }, 503);
   }
 });
+
+// ── Wave 3.5 surfaces: accounts + credits, Signal Duel, Time Machine ──────────
+authRoutes(app);
+duelRoutes(app, broadcast);
+replayRoutes(app);
 
 // ── Static dashboard hosting (single-origin deploy) ───────────────────────────
 // When the dashboard build exists (Render buildCommand builds it), serve it from

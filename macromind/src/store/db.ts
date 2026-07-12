@@ -136,6 +136,59 @@ function runMigrations(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_corpus_event ON macro_catalysts(event_type);
     CREATE INDEX IF NOT EXISTS idx_corpus_dir   ON macro_catalysts(direction);
 
+    -- Accounts: Google / wallet / guest identities (Wave 3.5)
+    CREATE TABLE IF NOT EXISTS users (
+      id             TEXT PRIMARY KEY,
+      provider       TEXT NOT NULL,            -- 'google' | 'wallet' | 'guest'
+      provider_id    TEXT NOT NULL,            -- google sub | wallet address | guest uuid
+      email          TEXT,
+      name           TEXT,
+      avatar         TEXT,
+      wallet_address TEXT,
+      created_at     INTEGER NOT NULL,
+      UNIQUE(provider, provider_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      token      TEXT PRIMARY KEY,
+      user_id    TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+
+    -- MARA credits: append-only ledger, balance = SUM(delta)
+    CREATE TABLE IF NOT EXISTS credit_ledger (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    TEXT NOT NULL REFERENCES users(id),
+      delta      INTEGER NOT NULL,
+      reason     TEXT NOT NULL,                -- 'signup_grant' | 'duel_stake' | 'duel_win' | 'duel_push' | ...
+      ref        TEXT,                         -- duel id / decision id
+      created_at INTEGER NOT NULL
+    );
+
+    -- Signal Duel: operator vs the agent, staked in credits
+    CREATE TABLE IF NOT EXISTS duels (
+      id              TEXT PRIMARY KEY,
+      user_id         TEXT NOT NULL REFERENCES users(id),
+      event_name      TEXT NOT NULL,
+      actual          REAL NOT NULL,
+      forecast        REAL NOT NULL,
+      prediction      TEXT NOT NULL,           -- 'BULL' | 'BEAR'
+      stake           INTEGER NOT NULL,
+      mara_verdict    TEXT,                    -- conviction when resolved
+      mara_confidence INTEGER,
+      decision_id     TEXT,
+      outcome         TEXT NOT NULL DEFAULT 'PENDING',  -- PENDING | WIN | LOSS | PUSH | ERROR
+      payout          INTEGER NOT NULL DEFAULT 0,
+      created_at      INTEGER NOT NULL,
+      resolved_at     INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ledger_user   ON credit_ledger(user_id);
+    CREATE INDEX IF NOT EXISTS idx_duels_user    ON duels(user_id);
+    CREATE INDEX IF NOT EXISTS idx_duels_outcome ON duels(outcome);
+
     -- Indices for fast lookups
     CREATE INDEX IF NOT EXISTS idx_events_date   ON events(date);
     CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);

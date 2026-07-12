@@ -70,6 +70,14 @@ export interface BackendRisk {
   cumulativePnl: number;
   totalTrades: number;
   winRate: number;
+  /** Real configured limits served by the backend — never hardcoded client-side */
+  limits?: {
+    maxOpenPositions: number;
+    maxDailyTrades: number;
+    maxDrawdownPct: number;
+    maxLeverage: number;
+    maxRiskPerTradePct: number;
+  };
 }
 
 export interface BackendStatus {
@@ -97,9 +105,36 @@ export interface BackendNewsItem {
  */
 export const API_BASE: string = (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
+/** Session token for authenticated calls (accounts + credits + duels). */
+const TOKEN_KEY = 'mara_session';
+export function getToken(): string | null { return localStorage.getItem(TOKEN_KEY); }
+export function setToken(t: string | null): void {
+  if (t) localStorage.setItem(TOKEN_KEY, t);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
+function authHeaders(): Record<string, string> {
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { signal: AbortSignal.timeout(15000) });
+  const res = await fetch(`${API_BASE}${path}`, {
+    signal: AbortSignal.timeout(15000),
+    headers: authHeaders(),
+  });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
+}
+
+/** POST helper — always goes through API_BASE (the bare-fetch version broke on Vercel). */
+async function postJson<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(20000),
+  });
   return res.json() as Promise<T>;
 }
 
@@ -163,23 +198,112 @@ export const api = {
   diag:        () => fetchJson<BackendDiag>('/api/diag'),
   track:       () => fetchJson<Record<string, unknown>>('/api/track'),
   backtest:    () => fetchJson<Record<string, unknown>>('/api/backtest'),
-  regime:      () => fetchJson<Record<string, unknown>>('/api/regime'),
+  regime:      () => fetchJson<BackendRegime>('/api/regime'),
 
   trigger: (params: { event: string; actual: number; forecast: number; previous?: number }) =>
-    fetch('/api/trigger', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(params),
-    }).then((r) => r.json() as Promise<{ ok?: boolean; message?: string; error?: string }>),
+    postJson<{ ok?: boolean; message?: string; error?: string }>('/api/trigger', params),
 
   killSwitch: () =>
-    fetch('/api/kill-switch', { method: 'POST' })
-      .then((r) => r.json() as Promise<{ ok?: boolean; error?: string }>),
+    postJson<{ ok?: boolean; error?: string }>('/api/kill-switch'),
 
   resetKillSwitch: () =>
-    fetch('/api/kill-switch/reset', { method: 'POST' })
-      .then((r) => r.json() as Promise<{ ok?: boolean; error?: string }>),
+    postJson<{ ok?: boolean; error?: string }>('/api/kill-switch/reset'),
 };
+
+// ── Accounts / credits ───────────────────────────────────────────────────────
+
+export interface SessionPayload {
+  token: string;
+  user: {
+    id: string;
+    provider: 'google' | 'wallet' | 'guest';
+    name: string | null;
+    email: string | null;
+    avatar: string | null;
+    walletAddress: string | null;
+  };
+  credits: number;
+  error?: string;
+}
+
+export const authApi = {
+  guest:  (name?: string) => postJson<SessionPayload>('/api/auth/guest', name ? { name } : {}),
+  google: (credential: string) => postJson<SessionPayload>('/api/auth/google', { credential }),
+  walletNonce:  (address: string) => postJson<{ address: string; nonce: string; message: string; error?: string }>('/api/auth/wallet/nonce', { address }),
+  walletVerify: (address: string, signature: string) => postJson<SessionPayload>('/api/auth/wallet/verify', { address, signature }),
+  me:     () => fetchJson<SessionPayload & { ledger: Array<{ delta: number; reason: string; ref: string | null; created_at: number }> }>('/api/auth/me'),
+  logout: () => postJson<{ ok: boolean }>('/api/auth/logout'),
+};
+
+// ── Signal Duel ──────────────────────────────────────────────────────────────
+
+export interface DuelRow {
+  id: string; event_name: string; actual: number; forecast: number;
+  prediction: 'BULL' | 'BEAR'; stake: number;
+  mara_verdict: string | null; mara_confidence: number | null;
+  outcome: 'PENDING' | 'WIN' | 'LOSS' | 'PUSH' | 'ERROR';
+  payout: number; created_at: number; resolved_at: number | null;
+}
+
+export interface LeaderboardRow {
+  rank: number; name: string; provider: string; credits: number;
+  wins: number; losses: number; pushes: number; duels: number; accuracy: number | null;
+}
+
+export const duelApi = {
+  start: (params: { event: string; actual: number; forecast: number; previous?: number; prediction: 'BULL' | 'BEAR'; stake: number }) =>
+    postJson<{ ok?: boolean; duelId?: string; credits?: number; message?: string; error?: string }>('/api/duel/start', params),
+  mine: () => fetchJson<{ duels: DuelRow[]; credits: number }>('/api/duel/mine'),
+  leaderboard: () => fetchJson<{ leaderboard: LeaderboardRow[] }>('/api/duel/leaderboard'),
+};
+
+// ── Time Machine ─────────────────────────────────────────────────────────────
+
+export interface ReplayPrint {
+  id: string; date: string;
+  actual: number | null; forecast: number | null; previous: number | null;
+  surpriseZ: number | null; direction: string | null; regime: string | null;
+  btcRet: { d1: number | null; d3: number | null; d7: number | null; d30: number | null };
+  ethRet: { d1: number | null; d3: number | null; d7: number | null; d30: number | null };
+  replay: {
+    verdict: 'BULL' | 'BEAR' | 'NEUTRAL';
+    confidence: number;
+    analogCount: number;
+    analogMedianRet1d: number | null;
+    analogHitRate: number | null;
+    explanation: string;
+    hypotheticalPnlPct1d: number | null;
+    hypotheticalPnlPct7d: number | null;
+    sizeMultiplier: number;
+  };
+  cumulativePnlPct: number;
+}
+
+export interface ReplayTimeline {
+  eventType: string;
+  prints: ReplayPrint[];
+  summary?: { totalPrints: number; traded: number; stoodDown: number; winRate: number | null; cumulativePnlPct: number };
+  method?: string;
+  note?: string;
+}
+
+export const replayApi = {
+  families: () => fetchJson<{ families: Array<{ event_type: string; n: number; first: string; last: string }> }>('/api/replay/events'),
+  timeline: (eventType: string) => fetchJson<ReplayTimeline>(`/api/replay?event_type=${encodeURIComponent(eventType)}`),
+};
+
+// ── Regime (typed — Risk Engine renders this for real) ──────────────────────
+
+export interface BackendRegime {
+  regime: 'BULL_QUIET' | 'BULL_VOLATILE' | 'RANGING' | 'BEAR_VOLATILE' | 'CRASH';
+  trendPct: number;
+  realizedVolAnnual: number;
+  lookbackDays: number;
+  risk: { sizeMultiplier: number; stopMultiplier: number; convictionFloor: number };
+  explanation: string;
+  circuitBreaker: { active: boolean; reason: string | null; sizeMultiplier?: number };
+  error?: string;
+}
 
 // ── Type mappers ─────────────────────────────────────────────────────────────
 

@@ -92,6 +92,36 @@ curl -X POST localhost:3001/api/trigger -H 'Content-Type: application/json' \
 cd ../mara-macro-dashboard && npm run dev             # open /, /terminal, /judges, /diag, /track
 ```
 
+## E2. Wave 3.5 — full redesign + accounts + play layer (2026-07-12, later)
+
+**Design system "Amber Phosphor"**: complete retheme (molten amber/ember on warm
+oil-black, bone text, Instrument Serif display + Spline Sans Mono data), custom
+reticle cursor (rAF-lerped ring + dot, fine pointers only), phosphor scrollbars on
+both axes globally, corner-bracket panels, filament flicker, serif editorial
+headlines on the landing.
+
+**Accounts + credits (smoked live)**: Google Sign-In (GIS token → Google tokeninfo
+verification, needs `GOOGLE_CLIENT_ID`/`VITE_GOOGLE_CLIENT_ID`), wallet sign-in
+(EIP-6963 multi-wallet discovery → nonce → `personal_sign` → EIP-191 recovery via
+ethers; forged signature rejected in test), guest passes. New accounts get 1,000
+credits (guests 400) in an append-only ledger.
+
+**Signal Duel `/duel` (smoked live)**: stake credits on BULL/BEAR before the agent
+speaks; the REAL pipeline resolves the duel over WS. WIN pays 2×, NEUTRAL pushes,
+pipeline failure refunds. Leaderboard with accuracy-vs-agent. Live test: stake
+escrowed → Gemini daily quota exhausted → honest `ai_failure` NEUTRAL → PUSH,
+stake refunded automatically.
+
+**Time Machine `/replay` (smoked live)**: no-lookahead deterministic replay of the
+118-print corpus; CPI family: 24 prints, traded 10 / stood down 14 (evidence floor),
+win rate 90%, +4.73% cumulative; scrubber + autoplay + equity sparkline.
+
+**Honesty sweep**: Risk Engine fabricated fields removed (see mocks.md §F); risk
+limits served by `/api/risk.limits`; regime + circuit breaker live in the terminal;
+**fixed production bug** — trigger/kill-switch POSTs bypassed `VITE_API_URL` and
+failed on Vercel. `/judges` page removed; 5-step beginner onboarding added
+(first visit + "?" button).
+
 ## F. Deploy status (2026-07-12, post-deploy)
 0. ✅ **Render backend LIVE** — `https://mara-backend-28va.onrender.com` — `/healthz` OK, `/api/diag` **7/8 green** (only attestation ✗, expected: 🔒 faucet). Neon replication proved itself: the hosted instance restored the local session's DB snapshot (50 decisions). Keep-alive repo variable `BACKEND_HEALTHZ_URL` is set and the workflow is live.
    **Frontend LIVE** — `https://mara-neon.vercel.app` (project `mara`, GitHub-connected, auto-deploys `main`). The project had no rootDirectory (Vercel built the repo root → 404); fixed repo-side with a root `vercel.json` (install/build/output pointed at `mara-macro-dashboard`, SPA rewrite) + committed `.env.production` baking `VITE_API_URL=https://mara-backend-28va.onrender.com`. Verified: `/` and `/terminal` → 200, bundle contains the backend URL, backend answers with `access-control-allow-origin: *`.

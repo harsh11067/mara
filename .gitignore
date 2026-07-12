@@ -24,6 +24,7 @@ typechain-types/
 
 # Deploy script with embedded tokens — never commit
 deploy-all.sh
+render-patch.sh
 
 # Logs and debug
 *.log

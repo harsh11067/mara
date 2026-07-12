@@ -11,7 +11,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Cpu, Wifi, Wallet, LogOut, Radar, FlaskConical, ScrollText } from "lucide-react";
+import { Cpu, Wifi, Radar, ScrollText, Swords, Clock, HelpCircle } from "lucide-react";
 import {
   MacroEvent, AiReasoning, Trade, SsiHolding, RotationLog, AgentTraceStep,
 } from "./types";
@@ -23,7 +23,8 @@ import RiskEngine           from "./components/RiskEngine";
 import PerformanceCard      from "./components/PerformanceCard";
 import SsiPortfolio         from "./components/SsiPortfolio";
 import OnChainAttestation   from "./components/OnChainAttestation";
-import { OPERATOR_ADDRESS }  from "./operator";
+import AccountMenu          from "./components/AccountMenu";
+import Onboarding           from "./components/Onboarding";
 
 import {
   api,
@@ -35,19 +36,14 @@ import {
   createWebSocket,
   type WsMessage,
   type BackendPerformanceSummary,
+  type BackendRisk,
+  type BackendRegime,
   type DiagCheck,
 } from "./api";
 
-interface EthereumProvider {
-  request: (args: { method: string }) => Promise<string[]>;
-  isMetaMask?: boolean;
-  on?: (event: string, handler: (...args: unknown[]) => void) => void;
-}
-declare global {
-  interface Window { ethereum?: EthereumProvider }
-}
-
 interface TickerQuote { sym: string; px: number | null; chg: number | null }
+
+const ONBOARD_KEY = "mara_onboarded";
 
 export default function App() {
   // ── State — all empty until the backend speaks (honest by design) ──────────
@@ -62,11 +58,8 @@ export default function App() {
   const [isSimulating,    setIsSimulating]    = useState(false);
   const [isKilled,        setIsKilled]        = useState(false);
 
-  // Wallet
-  const [walletAddress,      setWalletAddress]      = useState<string | null>(null);
-  const [walletIsMetaMask,   setWalletIsMetaMask]   = useState(false);
-  const [isConnecting,       setIsConnecting]       = useState(false);
-  const [showWalletDropdown, setShowWalletDropdown] = useState(false);
+  // Onboarding — first visit gets the walkthrough
+  const [showOnboard, setShowOnboard] = useState(() => !localStorage.getItem(ONBOARD_KEY));
 
   // Live tickers (real SoDEX marks — null until fetched)
   const [tickers, setTickers] = useState<TickerQuote[]>([
@@ -75,10 +68,9 @@ export default function App() {
     { sym: "SOL-USD", px: null, chg: null },
   ]);
 
-  // Account / risk (zeros until real data arrives)
-  const [balance,            setBalance]            = useState(0);
-  const [drawdownPercent,    setDrawdownPercent]    = useState(0);
-  const [currentDailyTrades, setCurrentDailyTrades] = useState(0);
+  // Account / risk — full backend objects, nothing derived client-side
+  const [risk,   setRisk]   = useState<BackendRisk | null>(null);
+  const [regime, setRegime] = useState<BackendRegime | null>(null);
   const [perf, setPerf] = useState<BackendPerformanceSummary | null>(null);
   const [diagChecks, setDiagChecks] = useState<DiagCheck[]>([]);
 
@@ -121,7 +113,7 @@ export default function App() {
   // ── Backend polling (single source of truth) ────────────────────────────────
   const mergeBackendData = async () => {
     try {
-      const [evts, decs, trd, risk] = await Promise.all([
+      const [evts, decs, trd, riskState] = await Promise.all([
         api.events(), api.decisions(), api.trades(), api.risk(),
       ]);
       setBackendOnline(true);
@@ -130,11 +122,8 @@ export default function App() {
       setReasonings(decs.map(mapDecision).slice(0, 20));
       setTrades(trd.map(mapTrade).slice(0, 20));
 
-      const liveBalance = risk.liveBalance ?? risk.accountBalance ?? 0;
-      setBalance(liveBalance);
-      setDrawdownPercent(Math.max(0, risk.drawdownPercent ?? 0));
-      setCurrentDailyTrades(risk.totalTrades ?? 0);
-      setIsKilled(risk.killSwitchActive);
+      setRisk(riskState);
+      setIsKilled(riskState.killSwitchActive);
     } catch {
       setBackendOnline(false);
     }
@@ -151,11 +140,13 @@ export default function App() {
   useEffect(() => {
     void mergeBackendData();
     pollRef.current = setInterval(() => void mergeBackendData(), 10_000);
-    // diag (module registry) refresh on a slower cadence
+    // diag (module registry) + regime refresh on a slower cadence
     const diagId = setInterval(() => {
       api.diag().then((d) => setDiagChecks(d.checks)).catch(() => {});
-    }, 30_000);
+      api.regime().then(setRegime).catch(() => {});
+    }, 60_000);
     api.diag().then((d) => setDiagChecks(d.checks)).catch(() => {});
+    api.regime().then(setRegime).catch(() => {});
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       clearInterval(diagId);
@@ -212,10 +203,9 @@ export default function App() {
           });
         }
         if (msg.type === "risk") {
-          const r = msg.data as { killSwitchActive: boolean; drawdownPercent: number; balance?: number };
-          setIsKilled(r.killSwitchActive);
-          setDrawdownPercent(Math.max(0, r.drawdownPercent));
-          if (r.balance !== undefined && r.balance > 0) setBalance(r.balance);
+          const r = msg.data as Partial<BackendRisk>;
+          if (r.killSwitchActive !== undefined) setIsKilled(r.killSwitchActive);
+          setRisk((prev) => (prev ? { ...prev, ...r } : prev));
         }
         if (msg.type === "status") setIsKilled(msg.data.killSwitch);
       },
@@ -224,32 +214,9 @@ export default function App() {
     return cleanup;
   }, []);
 
-  // Wallet
-  const handleConnectWallet = async () => {
-    if (isConnecting || walletAddress) return;
-    setIsConnecting(true);
-    const eth = window.ethereum;
-    if (eth) {
-      try {
-        const accounts = await eth.request({ method: "eth_requestAccounts" });
-        if (accounts.length > 0) {
-          setWalletAddress(accounts[0]);
-          setWalletIsMetaMask(true);
-        }
-      } catch { /* user rejected */ }
-      setIsConnecting(false);
-    } else {
-      // No MetaMask → show the REAL operator wallet, read-only, immediately.
-      setWalletAddress(OPERATOR_ADDRESS);
-      setWalletIsMetaMask(false);
-      setIsConnecting(false);
-    }
-  };
-
-  const handleDisconnectWallet = () => {
-    setWalletAddress(null);
-    setWalletIsMetaMask(false);
-    setShowWalletDropdown(false);
+  const closeOnboarding = () => {
+    localStorage.setItem(ONBOARD_KEY, "1");
+    setShowOnboard(false);
   };
 
   // ── Trigger: REAL backend cycle only — no client-side theater ──────────────
@@ -337,71 +304,17 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {/* Nav */}
           <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link to="/duel" className="mc-btn mc-btn--amber" style={{ gap: 6, textDecoration: "none" }}><Swords size={13} /> Duel</Link>
+            <Link to="/replay" className="mc-btn" style={{ gap: 6, textDecoration: "none" }}><Clock size={13} /> Replay</Link>
             <Link to="/track" className="mc-btn" style={{ gap: 6, textDecoration: "none" }}><ScrollText size={13} /> Track</Link>
             <Link to="/diag" className="mc-btn" style={{ gap: 6, textDecoration: "none" }}><Radar size={13} /> Diag</Link>
-            <Link to="/judges" className="mc-btn" style={{ gap: 6, textDecoration: "none" }}><FlaskConical size={13} /> Judges</Link>
+            <button className="mc-btn mc-btn--ghost" style={{ padding: "9px 10px" }} title="How this works" onClick={() => setShowOnboard(true)}>
+              <HelpCircle size={13} />
+            </button>
           </nav>
 
-          {/* Wallet */}
-          {!walletAddress ? (
-            <button
-              onClick={() => void handleConnectWallet()}
-              disabled={isConnecting}
-              className="mc-btn"
-              style={{ gap: 7 }}
-            >
-              <Wallet size={13} />
-              {isConnecting ? "Connecting…" : window.ethereum ? "Connect MetaMask" : "Connect Wallet"}
-            </button>
-          ) : (
-            <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setShowWalletDropdown(!showWalletDropdown)}
-                className="mc-badge mc-badge--pos"
-                style={{ padding: "8px 12px", cursor: "pointer" }}
-              >
-                <span className="mc-dot mc-dot--live" />
-                {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
-                {!walletIsMetaMask && <span style={{ marginLeft: 4, color: "var(--pos-dim)", fontSize: 10 }}>OPERATOR · READ-ONLY</span>}
-              </button>
-
-              {showWalletDropdown && (
-                <div style={{
-                  position: "absolute", right: 0, top: "calc(100% + 8px)", width: 260, zIndex: 50,
-                  background: "var(--bg-panel)", border: "1px solid var(--border)", borderRadius: "var(--r-md)",
-                  padding: 16, boxShadow: "0 8px 24px rgba(0,0,0,.6)",
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <span className="mara-label">Wallet</span>
-                    <span className="mara-micro mara-pos">CONNECTED</span>
-                  </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <span className="mara-label" style={{ display: "block", marginBottom: 4 }}>ADDRESS</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-1)", wordBreak: "break-all", lineHeight: 1.6 }}>{walletAddress}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderTop: "1px solid var(--border)", paddingTop: 12, marginBottom: 12 }}>
-                    <div>
-                      <span className="mara-label" style={{ display: "block", marginBottom: 4 }}>SODEX BALANCE</span>
-                      <span className="mara-value" style={{ fontSize: 18 }}>
-                        {balance > 0 ? `$${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"}
-                      </span>
-                      <span className="mara-micro" style={{ display: "block", marginTop: 2 }}>USDC (testnet, live)</span>
-                    </div>
-                    <span className={`mc-badge ${walletIsMetaMask ? "mc-badge--info" : "mc-badge--muted"}`}>
-                      {walletIsMetaMask ? "MetaMask" : "Operator"}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleDisconnectWallet}
-                    className="mc-btn mc-btn--neg mc-btn--full"
-                    style={{ padding: "9px 0" }}
-                  >
-                    <LogOut size={13} /> Disconnect
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Account: Google / wallet / guest + credits */}
+          <AccountMenu />
 
           {/* UTC Clock */}
           <div style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "right" }}>
@@ -449,15 +362,12 @@ export default function App() {
           </div>
           <div style={{ flex: 1, minHeight: 0 }}>
             <RiskEngine
-              balance={balance}
+              risk={risk}
+              regime={regime}
               openPositions={trades.filter(t => t.status === "OPEN").length}
-              maxOpenPositions={3}
               unrealizedPnl={trades.filter(t => t.status === "OPEN").reduce((s, t) => s + t.pnl, 0)}
               isKilled={isKilled}
               onKillSwitchToggle={handleKillSwitchToggle}
-              drawdownPercent={drawdownPercent}
-              maxDailyTrades={10}
-              currentDailyTrades={currentDailyTrades}
             />
           </div>
         </div>
@@ -497,9 +407,11 @@ export default function App() {
           MARA Autonomous Risk Monitor · Backend {backendOnline ? "ONLINE" : "OFFLINE"} · every number on this screen is live or absent — never simulated
         </span>
         <span className="mara-micro" style={{ marginLeft: "auto", color: "var(--fg-4)" }}>
-          TRADES #{currentDailyTrades} · {new Date().toISOString().slice(0, 10)}
+          TRADES #{risk?.totalTrades ?? 0} · {new Date().toISOString().slice(0, 10)}
         </span>
       </footer>
+
+      {showOnboard && <Onboarding onClose={closeOnboarding} />}
     </div>
   );
 }
