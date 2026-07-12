@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App.tsx';
 import Landing from './pages/Landing.tsx';
 import Diag from './pages/Diag.tsx';
@@ -21,6 +21,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/replay" element={<Replay />} />
         <Route path="/diag" element={<Diag />} />
         <Route path="/track" element={<Track />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,
