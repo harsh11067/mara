@@ -33,6 +33,7 @@ skills-lock.json
 
 # Internal docs kept local by request
 inside.md
+mocks.md
 
 # Logs and debug
 *.log
