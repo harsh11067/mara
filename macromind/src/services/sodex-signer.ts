@@ -102,6 +102,22 @@ export interface BatchNewOrderRequest {
   orders: BatchNewOrderItem[];
 }
 
+/** Asset transfer request — field order MUST match TransferAssetRequest Go struct
+ *  (sodex-go-sdk-public/common/types/transfer_asset_request.go).
+ *  type: 0 EVM_DEPOSIT · 1 PERPS_DEPOSIT · 2 EVM_WITHDRAW · 3 PERPS_WITHDRAW · 4 INTERNAL */
+export interface TransferAssetRequest {
+  id: number;
+  fromAccountID: number;
+  toAccountID: number;
+  coinID: number;
+  amount: string;   // DecimalString, canonical form (no trailing zeros)
+  type: number;
+}
+
+export const TransferAssetType = {
+  EvmDeposit: 0, PerpsDeposit: 1, EvmWithdraw: 2, PerpsWithdraw: 3, Internal: 4,
+} as const;
+
 /** Schedule cancel (cancel-all) request */
 export interface ScheduleCancelRequest {
   accountID: number;
@@ -204,6 +220,18 @@ function buildBatchNewOrderParams(req: BatchNewOrderRequest): Record<string, unk
       if (item.funds !== undefined)    obj['funds']    = item.funds;
       return obj;
     }),
+  };
+}
+
+function buildTransferAssetParams(req: TransferAssetRequest): Record<string, unknown> {
+  // Strict Go struct declaration order: id, fromAccountID, toAccountID, coinID, amount, type
+  return {
+    id:            req.id,
+    fromAccountID: req.fromAccountID,
+    toAccountID:   req.toAccountID,
+    coinID:        req.coinID,
+    amount:        stripTrailingZeros(req.amount),
+    type:          req.type,
   };
 }
 
@@ -403,6 +431,21 @@ export class SoDEXSigner {
     const nonce = this.nextNonce();
     const params = buildUpdateLeverageParams(req);
     const sig = signSoDEXAction('updateLeverage', params, this.privateKey, nonce, PERPS_DOMAIN_NAME, this.chainId);
+    return {
+      headers: this.buildHeaders(sig, nonce),
+      body: params,
+    };
+  }
+
+  /**
+   * Sign a spot-engine TransferAssetRequest (action "transferAsset" per the Go
+   * SDK). Used for withdrawals to the ValueChain EVM chain (toAccountID=999,
+   * type=EVM_WITHDRAW) and spot↔perps transfers.
+   */
+  signTransferAsset(req: TransferAssetRequest): { headers: SignedHeaders; body: Record<string, unknown> } {
+    const nonce = this.nextNonce();
+    const params = buildTransferAssetParams(req);
+    const sig = signSoDEXAction('transferAsset', params, this.privateKey, nonce, SPOT_DOMAIN_NAME, this.chainId);
     return {
       headers: this.buildHeaders(sig, nonce),
       body: params,

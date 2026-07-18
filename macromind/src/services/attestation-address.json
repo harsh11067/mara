@@ -1,11 +1,11 @@
 {
-  "environment": "local-dev",
-  "network": "localhost",
-  "chainId": 31337,
+  "environment": "valuechain",
+  "network": "valuechain_testnet",
+  "chainId": 138565,
   "contractAddress": "0x8BF2520742CCb4101f28C216fF564A221bba1B29",
   "operator": "0x2633a0d83a2aA43449DAd7a304a0EE71F5Bfa8eC",
-  "deployedAt": "2026-07-12T08:12:47.725Z",
-  "deployTxHash": "0xaade1267e905d147c774fddea501dc8838ac2cb2138d546f2d60d6eb53f89179",
+  "deployedAt": "2026-07-18T22:04:30.519Z",
+  "deployTxHash": "0x5161bc1f680908a0b94beeb84add260363cf829c79e9b974fc4132f827dcbd1e",
   "version": "1.0.0",
   "deployer": "0x2633a0d83a2aA43449DAd7a304a0EE71F5Bfa8eC",
   "abi": [
