@@ -1,9 +1,9 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
 import { buildConvictionPrompt, buildStrictConvictionPrompt } from './prompts.js';
+import { geminiClient, geminiKeyLabel, isQuotaError, rotateGeminiKey } from './gemini-pool.js';
 import { DecisionStore } from '../store/decision-store.js';
 import type { SurpriseResult, MarketContext, TradeDecision, AIDecisionRaw } from './types.js';
 import type { Conviction, TradeAction, NoTradeReason } from '../store/decision-store.js';
@@ -147,11 +147,6 @@ export function finalizeDecision(params: {
 // ── Main engine ───────────────────────────────────────────────────────────────
 
 export class ConvictionEngine {
-  private readonly genAI: GoogleGenerativeAI;
-
-  constructor() {
-    this.genAI = new GoogleGenerativeAI(config.gemini.apiKey);
-  }
 
   /**
    * Analyze a macro surprise and market context to produce a trade decision.
@@ -176,9 +171,9 @@ export class ConvictionEngine {
           ? buildConvictionPrompt(surprise, market, market.recentHeadlines)
           : buildStrictConvictionPrompt(surprise, market, market.recentHeadlines);
 
-        logger.info(`Gemini analysis attempt ${attempt}/3 for ${surprise.event}`);
+        logger.info(`Gemini analysis attempt ${attempt}/3 for ${surprise.event} (${geminiKeyLabel()})`);
 
-        const model = this.genAI.getGenerativeModel({
+        const model = geminiClient().getGenerativeModel({
           model: config.gemini.model,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           generationConfig: {
@@ -217,12 +212,19 @@ export class ConvictionEngine {
         logger.warn(`Gemini attempt ${attempt} failed`, { error: lastError.slice(0, 200) });
 
         if (attempt < 3) {
-          // Parse Gemini's retryDelay hint (e.g. "Please retry in 51s")
-          const retryMatch = lastError.match(/retry\w*\s+in\s+(\d+)/i);
-          const retryMs = retryMatch ? parseInt(retryMatch[1], 10) * 1000 : 2000 * attempt;
-          const waitMs = Math.min(retryMs, 65_000); // cap at 65s
-          logger.info(`Waiting ${waitMs / 1000}s before retry...`);
-          await new Promise((r) => setTimeout(r, waitMs));
+          if (isQuotaError(lastError)) {
+            // Quota hit — switch to the sibling key immediately instead of
+            // sleeping through the 429 backoff window.
+            rotateGeminiKey(lastError);
+            await new Promise((r) => setTimeout(r, 1000));
+          } else {
+            // Parse Gemini's retryDelay hint (e.g. "Please retry in 51s")
+            const retryMatch = lastError.match(/retry\w*\s+in\s+(\d+)/i);
+            const retryMs = retryMatch ? parseInt(retryMatch[1], 10) * 1000 : 2000 * attempt;
+            const waitMs = Math.min(retryMs, 65_000); // cap at 65s
+            logger.info(`Waiting ${waitMs / 1000}s before retry...`);
+            await new Promise((r) => setTimeout(r, waitMs));
+          }
         }
       }
     }

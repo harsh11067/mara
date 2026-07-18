@@ -1,0 +1,10 @@
+node_modules/
+.next/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+# Public build-time identifiers only (API origin + Google client ID) — must ship
+!.env.production
+out/

@@ -22,7 +22,9 @@ const logger = createLogger('Auth');
 
 const SESSION_TTL_MS = 30 * 24 * 3600_000; // 30 days
 export const SIGNUP_GRANT = 1000;           // Google / wallet accounts
-export const GUEST_GRANT = 400;             // guest passes
+// Guests can browse everything but earn no credits — credits are the reward
+// for a real (Google / wallet) login, which is what gates Signal Duel stakes.
+export const GUEST_GRANT = 0;
 
 export interface User {
   id: string;
@@ -93,8 +95,9 @@ function findOrCreateUser(
   db.prepare(
     'INSERT INTO users (id, provider, provider_id, email, name, avatar, wallet_address, created_at) VALUES (?,?,?,?,?,?,?,?)',
   ).run(user.id, user.provider, user.provider_id, user.email, user.name, user.avatar, user.wallet_address, user.created_at);
-  grantCredits(user.id, provider === 'guest' ? GUEST_GRANT : SIGNUP_GRANT, 'signup_grant');
-  logger.info(`New ${provider} account ${user.id.slice(0, 8)} — granted ${provider === 'guest' ? GUEST_GRANT : SIGNUP_GRANT} credits`);
+  const grant = provider === 'guest' ? GUEST_GRANT : SIGNUP_GRANT;
+  if (grant > 0) grantCredits(user.id, grant, 'signup_grant');
+  logger.info(`New ${provider} account ${user.id.slice(0, 8)} — granted ${grant} credits`);
   return { user, created: true };
 }
 

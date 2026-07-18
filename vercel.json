@@ -1,9 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm --prefix mara-macro-dashboard install",
-  "buildCommand": "npm --prefix mara-macro-dashboard run build",
-  "outputDirectory": "mara-macro-dashboard/dist",
-  "rewrites": [
-    { "source": "/((?!api|ws|assets|.*\\..*).*)", "destination": "/index.html" }
-  ]
+  "installCommand": "npm --prefix MARA install",
+  "buildCommand": "npm --prefix MARA run build",
+  "outputDirectory": "MARA/out",
+  "cleanUrls": true
 }

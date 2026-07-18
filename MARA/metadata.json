@@ -1,0 +1,8 @@
+{
+  "name": "MARA",
+  "description": "Futuristic AI-native financial operating system",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

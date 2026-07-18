@@ -26,6 +26,14 @@ typechain-types/
 deploy-all.sh
 render-patch.sh
 
+# Design-prototype scratch + local agent tooling — not part of the product
+alter_display/
+.agents/
+skills-lock.json
+
+# Internal docs kept local by request
+inside.md
+
 # Logs and debug
 *.log
 npm-debug.log*

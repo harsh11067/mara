@@ -16,6 +16,7 @@
  * Cached 25 s so judges can hammer refresh without burning API budgets.
  */
 import { config } from '../config.js';
+import { currentGeminiKey, geminiKeyLabel } from '../ai/gemini-pool.js';
 import { SoSoValueClient, SOSOVALUE_ENDPOINTS } from '../services/sosovalue-client.js';
 import { SoDEXClient } from '../services/sodex-client.js';
 import { telegramCheck } from '../services/telegram.js';
@@ -106,7 +107,7 @@ export async function runDiag(): Promise<DiagReport> {
     // ── Gemini (model metadata ping — burns no generation quota) ────────────
     const gem = await timed(async () => {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${config.gemini.model}?key=${config.gemini.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${config.gemini.model}?key=${currentGeminiKey()}`,
         { signal: AbortSignal.timeout(8000) },
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -116,7 +117,9 @@ export async function runDiag(): Promise<DiagReport> {
     checks.push({
       name: 'gemini', label: `Gemini AI (${config.gemini.model})`,
       ok: gem.ok, latencyMs: gem.ms,
-      detail: gem.ok ? `model reachable: ${gem.value}` : gem.err ?? 'failed',
+      detail: gem.ok
+        ? `model reachable: ${gem.value} (${geminiKeyLabel()} active, pool of ${config.gemini.apiKeys.length})`
+        : gem.err ?? 'failed',
     });
 
     // ── Database ─────────────────────────────────────────────────────────────

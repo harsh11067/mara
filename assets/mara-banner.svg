@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="MARA — autonomous macro intelligence">
+  <defs>
+    <linearGradient id="phosphor" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#C8923B"/>
+      <stop offset="0.5" stop-color="#FFB347"/>
+      <stop offset="1" stop-color="#FF6B4A"/>
+    </linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFB347" stop-opacity="0"/>
+      <stop offset="0.15" stop-color="#FFB347" stop-opacity="0.9"/>
+      <stop offset="0.85" stop-color="#FF6B4A" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FF6B4A" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style>
+      .grid-line { stroke: #F6F1E9; stroke-opacity: 0.05; stroke-width: 1; }
+      .tick { font: 400 10px 'Courier New', monospace; fill: #B6AEA2; letter-spacing: 0.35em; }
+      .wordmark { font: italic 700 86px Georgia, 'Times New Roman', serif; fill: #F6F1E9; }
+      .tagline { font: 400 15px 'Courier New', monospace; fill: #B6AEA2; letter-spacing: 0.5em; }
+      .stat { font: 400 11px 'Courier New', monospace; fill: #FFB347; letter-spacing: 0.2em; }
+    </style>
+  </defs>
+
+  <!-- oil-black field -->
+  <rect width="1200" height="300" fill="#090807"/>
+  <rect width="1200" height="300" fill="#161412" opacity="0.35"/>
+
+  <!-- faint grid -->
+  <g>
+    <line class="grid-line" x1="0" y1="75"  x2="1200" y2="75"/>
+    <line class="grid-line" x1="0" y1="150" x2="1200" y2="150"/>
+    <line class="grid-line" x1="0" y1="225" x2="1200" y2="225"/>
+    <line class="grid-line" x1="200" y1="0" x2="200" y2="300"/>
+    <line class="grid-line" x1="400" y1="0" x2="400" y2="300"/>
+    <line class="grid-line" x1="600" y1="0" x2="600" y2="300"/>
+    <line class="grid-line" x1="800" y1="0" x2="800" y2="300"/>
+    <line class="grid-line" x1="1000" y1="0" x2="1000" y2="300"/>
+  </g>
+
+  <!-- the macro pulse: ECG line drawing itself, forever -->
+  <path id="pulse" filter="url(#glow)"
+        d="M0,170 L180,170 L210,170 L225,120 L240,215 L255,95 L270,185 L285,170 L420,170 L600,170 L625,170 L640,140 L655,200 L670,80 L685,205 L700,170 L840,170 L1020,170 L1040,170 L1055,130 L1070,210 L1085,105 L1100,180 L1115,170 L1200,170"
+        fill="none" stroke="url(#phosphor)" stroke-width="2.5"
+        stroke-dasharray="2600" stroke-dashoffset="2600" stroke-linecap="round">
+    <animate attributeName="stroke-dashoffset" from="2600" to="0" dur="6s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- scanline sweep -->
+  <rect x="-220" y="0" width="220" height="300" fill="url(#fade)" opacity="0.10">
+    <animate attributeName="x" from="-220" to="1200" dur="5s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- wordmark -->
+  <text class="wordmark" x="600" y="130" text-anchor="middle">MARA</text>
+  <text class="tagline" x="607" y="245" text-anchor="middle">THOUGHTS&#160;&#160;BEFORE&#160;&#160;ACTIONS</text>
+
+  <!-- corner fiducials -->
+  <g stroke="#FFB347" stroke-width="1.5" opacity="0.7" fill="none">
+    <path d="M14,30 L14,14 L30,14"/>
+    <path d="M1186,30 L1186,14 L1170,14"/>
+    <path d="M14,270 L14,286 L30,286"/>
+    <path d="M1186,270 L1186,286 L1170,286"/>
+  </g>
+
+  <!-- blinking status dot + labels -->
+  <circle cx="52" cy="46" r="4" fill="#FFB347">
+    <animate attributeName="opacity" values="1;0.15;1" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+  <text class="tick" x="68" y="50">LIVE — AUTONOMOUS MACRO AGENT</text>
+  <text class="tick" x="1148" y="50" text-anchor="end">SOSOVALUE × SODEX × GEMINI</text>
+
+  <!-- rotating stat readout -->
+  <g text-anchor="middle">
+    <text class="stat" x="600" y="286" opacity="0">
+      DETECT → REASON → RISK → EXECUTE → ATTEST
+      <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.42;0.5" dur="12s" repeatCount="indefinite"/>
+    </text>
+    <text class="stat" x="600" y="286" opacity="0">
+      EIP-712 SIGNED PERPS · SSI ROTATION · ON-CHAIN ATTESTATION
+      <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.5;0.58;0.92;1" dur="12s" repeatCount="indefinite"/>
+    </text>
+  </g>
+</svg>

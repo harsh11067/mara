@@ -16,10 +16,11 @@
  * to the single-call ConvictionEngine (never trades blind).
  */
 import {
-  GoogleGenerativeAI, SchemaType,
+  SchemaType,
   type FunctionDeclaration, type Part,
 } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
+import { geminiClient, isQuotaError, rotateGeminiKey } from './gemini-pool.js';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { createLogger } from '../utils/logger.js';
@@ -106,11 +107,6 @@ export interface AgenticResult {
 }
 
 export class AgenticAnalyzer {
-  private readonly genAI: GoogleGenerativeAI;
-
-  constructor() {
-    this.genAI = new GoogleGenerativeAI(config.gemini.apiKey);
-  }
 
   async run(
     surprise: SurpriseResult,
@@ -185,7 +181,7 @@ export class AgenticAnalyzer {
     };
 
     try {
-      const model = this.genAI.getGenerativeModel({
+      const model = geminiClient().getGenerativeModel({
         model: config.gemini.model,
         tools: [{ functionDeclarations: TOOL_DECLS }],
         generationConfig: {
@@ -253,6 +249,8 @@ When you have enough evidence, respond with your FINAL VERDICT as VALID JSON ONL
       };
     } catch (err) {
       const msg = String(err).slice(0, 200);
+      // On quota errors, rotate so the fallback engines run on the sibling key.
+      if (isQuotaError(msg)) rotateGeminiKey(msg);
       push({ kind: 'error', summary: `Agentic loop failed: ${msg} — falling back to single-call engine` });
       logger.warn('Agentic loop failed, falling back', { error: msg });
       return null;

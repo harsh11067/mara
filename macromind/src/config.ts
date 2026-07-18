@@ -15,8 +15,11 @@ const EnvSchema = z.object({
   SODEX_API_KEY_PRIVATE: z.string().default(''),
   SODEX_ACCOUNT_ID: z.coerce.number().default(0),
 
-  // AI
+  // AI — up to two keys; the pool rotates on quota errors so runs never halt.
   GEMINI_API_KEY: z.string().min(1, 'GEMINI_API_KEY is required'),
+  GEMINI_API_KEY2: z.string().default(''),
+  // Tolerated legacy typo of GEMINI_API_KEY2 present in some .env files.
+  GWMINI_API_KEY2: z.string().default(''),
 
   // App
   PORT: z.coerce.number().default(3001),
@@ -143,6 +146,8 @@ export const config = {
   // AI — gemini-2.0-flash-lite: fast, cost-efficient, higher free-tier quota
   gemini: {
     apiKey: env.GEMINI_API_KEY,
+    apiKeys: [env.GEMINI_API_KEY, env.GEMINI_API_KEY2 || env.GWMINI_API_KEY2]
+      .filter((k) => k.length > 0),
     model: 'gemini-2.5-flash' as const,
   },
 

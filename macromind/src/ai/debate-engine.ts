@@ -8,9 +8,9 @@
  * recommended collapse for the free tier), grounded in the surprise math,
  * market context, and real corpus analogs (citations by analog date).
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { z } from 'zod';
 import { config } from '../config.js';
+import { geminiClient, isQuotaError, rotateGeminiKey } from './gemini-pool.js';
 import { createLogger } from '../utils/logger.js';
 import type { SurpriseResult, MarketContext } from './types.js';
 import type { CorpusAnswer } from '../corpus/corpus.js';
@@ -70,11 +70,6 @@ RESPOND WITH VALID JSON ONLY:
 }
 
 export class DebateEngine {
-  private readonly genAI: GoogleGenerativeAI;
-
-  constructor() {
-    this.genAI = new GoogleGenerativeAI(config.gemini.apiKey);
-  }
 
   async debate(
     surprise: SurpriseResult,
@@ -82,7 +77,7 @@ export class DebateEngine {
     corpus: CorpusAnswer | null,
   ): Promise<MacroDebate | null> {
     try {
-      const model = this.genAI.getGenerativeModel({
+      const model = geminiClient().getGenerativeModel({
         model: config.gemini.model,
         generationConfig: {
           temperature: 0.4,
@@ -97,8 +92,10 @@ export class DebateEngine {
       logger.info(`Debate verdict: ${parsed.conviction} (${parsed.confidence}%) with dissent`);
       return { ...parsed, generatedAt: Date.now() };
     } catch (err) {
+      const msg = String(err).slice(0, 160);
+      if (isQuotaError(msg)) rotateGeminiKey(msg);
       logger.warn('Debate engine failed (non-fatal, single-call verdict stands)', {
-        error: String(err).slice(0, 160),
+        error: msg,
       });
       return null;
     }

@@ -1,4 +1,59 @@
+<div align="center">
+
+<img src="assets/mara-banner.svg" alt="MARA — the macro has a pulse" width="100%"/>
+
+<br/>
+
+<a href="https://mara-neon.vercel.app"><img src="https://img.shields.io/badge/LIVE_APP-mara--neon.vercel.app-FFB347?style=for-the-badge&labelColor=090807" alt="Live app"/></a>
+<a href="https://mara-backend-28va.onrender.com/healthz"><img src="https://img.shields.io/badge/ENGINE-mara--backend.onrender.com-FF6B4A?style=for-the-badge&labelColor=090807" alt="Backend"/></a>
+
+<img src="https://img.shields.io/badge/Next.js_15-frontend-F6F1E9?style=flat-square&logo=nextdotjs&logoColor=white&labelColor=090807"/>
+<img src="https://img.shields.io/badge/Hono_+_ws-engine-FFB347?style=flat-square&labelColor=090807"/>
+<img src="https://img.shields.io/badge/Gemini_2.5-dual--key_AI-FF6B4A?style=flat-square&logo=googlegemini&logoColor=white&labelColor=090807"/>
+<img src="https://img.shields.io/badge/SoDEX-EIP--712_execution-C8923B?style=flat-square&labelColor=090807"/>
+<img src="https://img.shields.io/badge/SoSoValue-35_endpoints-B6AEA2?style=flat-square&labelColor=090807"/>
+<img src="https://img.shields.io/badge/MCP-8_tools-a3a650?style=flat-square&labelColor=090807"/>
+
+<br/><br/>
+
+<img src="https://readme-typing-svg.demolab.com?font=Courier+New&weight=600&size=17&duration=2600&pause=800&color=FFB347&background=09080700&center=true&vCenter=true&width=720&lines=CPI+prints+hot+→+agent+reasons+in+5+tool+calls;stake+credits+·+duel+the+agent+·+double+or+nothing;rewind+a+decade+of+prints+—+zero+lookahead;detect+→+reason+→+risk+→+execute+→+attest" alt="MARA loop"/>
+
+</div>
+
 # MARA: Macro-Aware Research & Execution Agent
+
+**The terminal:** [mara-neon.vercel.app](https://mara-neon.vercel.app) · **Duel the agent:** [/duel](https://mara-neon.vercel.app/duel) · **Time Machine:** [/replay](https://mara-neon.vercel.app/replay) · **Live cognition:** [/terminal](https://mara-neon.vercel.app/terminal) · **Desk:** [/portfolio](https://mara-neon.vercel.app/portfolio)
+
+```mermaid
+flowchart LR
+    subgraph V["◤ Vercel — MARA frontend (Next.js 15, static)"]
+        L["/  landing"] --- T["/terminal"] --- P["/portfolio"] --- D["/duel"] --- R["/replay"]
+    end
+    subgraph B["◤ Render — macromind engine (Hono + WebSocket)"]
+        SC[dual-path\nevent scanner] --> SE[surprise\nz-engine] --> AG[agentic Gemini\n7 real tools]
+        AG --> DB8[bull/bear\ndebate] --> RK[risk gates\n+ regime + breaker] --> EX[EIP-712 orders\nperps + SSI]
+        EX --> AT[on-chain\nattestation]
+        AU[auth + credits\nledger] --- DU[signal duel] --- TM[time machine\nno-lookahead replay]
+    end
+    V <-->|"REST + WS (live traces, duels, risk)"| B
+    B --> SO[SoSoValue\n35 endpoints]
+    B --> SX[SoDEX\ntestnet]
+    B --> GM[Gemini 2.5\n2-key pool]
+    B --> NE[(Neon\nsnapshots)]
+```
+
+## 🌊 Wave 4 — the MARA frontend takeover
+
+- **A frontend people can steal from** — the deployed app is now `MARA/`: a Next.js 15 spatial interface (Instrument Serif italic display over Spline-mono data, d3 guilloche fields, a three.js monetary core, magnetic custom cursor) where **the ambience itself is market data**: the background glow's intensity is real 30-day BTC vol and its temperature is the real trend direction, polled from the engine's regime classifier.
+- **Nothing on screen is staged** — every number on all five pages traces to an engine endpoint or the WebSocket ([mocks.md](mocks.md) audit, section G): the landing's meters are the live regime, the pulse cards are real decisions, the terminal streams real `agent_trace` steps, the portfolio desk shows real SoDEX positions, probes, equity and the real kill switch.
+- **⚔️ Gamified Signal Duel** — stake credits on BULL/BEAR before the live pipeline runs; win-streaks (pushes don't break them), a rank ladder from OBSERVER to MACRO SOVEREIGN keyed off real wins, a beginner direction strip, and a public accuracy leaderboard.
+- **🕰️ Time Machine with Prophecy mode** — scrub every historical print (zero lookahead, honest stand-downs); flip on Prophecy mode and the verdicts hide until you call each print yourself — a pure calibration game against the machine.
+- **Credits only after real login** — Google (server-verified) or wallet signature (EIP-6963 → nonce → `personal_sign` → EIP-191 recovery) grants 1,000 credits; guest passes browse everything but hold 0. Connecting a wallet *is* authentication here, not address decoration.
+- **Dual-key Gemini pool** — two API keys with automatic rotation on quota errors across all three AI engines (agentic → debate → single-call); the pipeline no longer halts on a daily 429. `/api/diag` reports which key is active.
+- **Fire Live Run from the desk** — the portfolio's trade modal triggers the real pipeline (shared 20s cooldown), so anyone can watch a print become a verdict, a risk check, and an order.
+
+<details>
+<summary><b>🌊 Wave 3 / 3.5 — the real-engine foundation (click to expand)</b></summary>
 
 ## 🌊 Wave 3 — What's new
 
@@ -19,6 +74,8 @@
 - **Telegram broadcast** — every signal (including NO_TRADE passes) posts to the channel; wins and losses alike.
 - **Launch video script** — [script.md](script.md): a 90-second (with 60s cut) shot-by-shot script where every frame is a real capture.
 
+</details>
+
 MARA is a full-stack, autonomous macro-event trading and portfolio rotation system. It detects high-impact macro releases (such as CPI, Nonfarm Payrolls, and FOMC rate decisions) via a **dual-path scanner**, scores their crypto-market impact using **statistical surprise models + Gemini AI**, checks strict **risk management gates**, and executes **dual-leg trades** (BTC perpetual hedges + spot SSI index rotations) on the **SoDEX testnet** using custom **EIP-712 cryptographic signatures**.
 
 ---
@@ -29,10 +86,10 @@ MARA is structured as a robust four-layer system with a low-latency, real-time p
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         REACT DASHBOARD (Port 3000)                 │
-│  Event Calendar │ Agent Feed │ Trade History │ P&L │ Risk Panel     │
+│                MARA FRONTEND — Next.js 15 (Port 3000)               │
+│  Landing │ Terminal │ Portfolio Desk │ Signal Duel │ Time Machine   │
 └──────────────────────────────┬──────────────────────────────────────┘
-                               │ WebSocket + REST (Vite Proxy)
+                               │ WebSocket + REST (NEXT_PUBLIC_API_URL)
 ┌──────────────────────────────┴──────────────────────────────────────┐
 │                        BACKEND SERVER (Hono, Port 3001)             │
 │                                                                     │
@@ -110,17 +167,20 @@ Protects capital by running validation rules before placing orders:
     # Optional — enables "Continue with Google" (same OAuth client ID both sides):
     GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
     ```
-    > **Google Sign-In setup (2 min):** [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → *Create OAuth client ID* → Web application → add your site origin (e.g. `https://mara-neon.vercel.app` and `http://localhost:3000`) to *Authorized JavaScript origins* → copy the client ID into `GOOGLE_CLIENT_ID` (backend env) **and** `VITE_GOOGLE_CLIENT_ID` (frontend env / `.env.production`). Wallet and guest login work with zero configuration.
+    > **Google Sign-In setup (2 min):** [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → *Create OAuth client ID* → Web application → add your site origin (e.g. `https://mara-neon.vercel.app` and `http://localhost:3000`) to *Authorized JavaScript origins* → copy the client ID into `GOOGLE_CLIENT_ID` (backend env) **and** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (frontend env / `MARA/.env.production`). Wallet and guest login work with zero configuration.
 
-### Frontend Configuration (`mara-macro-dashboard`)
+### Frontend Configuration (`MARA/` — the deployed Next.js app)
 1.  Navigate to the frontend directory:
     ```bash
-    cd mara-macro-dashboard
+    cd MARA
     ```
 2.  Install dependencies:
     ```bash
     npm install
     ```
+3.  `MARA/.env.local` points at the local backend by default (`NEXT_PUBLIC_API_URL=http://localhost:3001`); production builds bake the Render origin from the committed `MARA/.env.production`. Set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to enable the Google button.
+
+> The previous Vite dashboard (`mara-macro-dashboard/`) remains in the repo as a legacy fallback but is no longer deployed.
 
 ---
 
@@ -133,12 +193,12 @@ npm run dev
 ```
 The server will initialize a SQLite database (`mara.db`), run migrations, start the background schedulers, and listen on `http://localhost:3001` and `ws://localhost:3001/ws`.
 
-### 2. Run Frontend Dashboard
-From the `mara-macro-dashboard` directory, start the Vite development server:
+### 2. Run the MARA Frontend
+From the `MARA` directory, start the Next.js dev server:
 ```bash
 npm run dev
 ```
-Open `http://localhost:3000` in your browser. The Vite server proxies all `/api` and `/ws` traffic to the Hono backend on port 3001.
+Open `http://localhost:3000`. The app talks straight to the backend origin from `NEXT_PUBLIC_API_URL` (REST + WebSocket) — no proxy involved.
 
 ### 3. Run Automated Tests
 You can run targeted tests for individual modules inside the `macromind` folder:
