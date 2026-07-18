@@ -166,6 +166,7 @@ export default function DuelPage() {
             <Link href="/terminal" className="hover:text-foreground transition-colors">Terminal</Link>
             <span className="text-amber border-b border-amber/40 pb-1">Duel</span>
             <Link href="/replay" className="hover:text-foreground transition-colors">Replay</Link>
+            <Link href="/edge" className="hover:text-foreground transition-colors">Edge</Link>
             <Link href="/portfolio" className="hover:text-foreground transition-colors">Portfolio</Link>
           </div>
         </div>

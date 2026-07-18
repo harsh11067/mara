@@ -306,6 +306,98 @@ export const replayApi = {
   timeline: (eventType: string) => fetchJson<ReplayTimeline>(`/api/replay?event_type=${encodeURIComponent(eventType)}`),
 };
 
+// ── Proof of Edge (the Gauntlet) ─────────────────────────────────────────────
+
+export interface EdgeStrategyMetrics {
+  label: string;
+  totalReturnPct: number;
+  sharpe: number | null;
+  sharpeDiscounted: number | null;
+  sortino: number | null;
+  maxDrawdownPct: number;
+  winRate: number | null;
+  tradesTaken: number;
+  stoodDown: number;
+}
+
+export interface EdgeReport {
+  n: number;
+  window: { from: string | null; to: string | null };
+  strategies: {
+    mara: EdgeStrategyMetrics;
+    maraNoStandDown: EdgeStrategyMetrics;
+    naive: EdgeStrategyMetrics;
+    buyHold: EdgeStrategyMetrics;
+  };
+  restraintValuePct: number;
+  equity: Array<{ date: string; mara: number; noStandDown: number; naive: number; buyHold: number }>;
+  standDowns: Array<{
+    date: string; eventType: string; z: number | null; regime: string | null;
+    reason: string; dodgedRetPct: number | null;
+  }>;
+  perRegime: Array<{ regime: string; prints: number; maraRetPct: number; buyHoldRetPct: number; maraWins: boolean }>;
+  monteCarlo: { paths: number; var95Pct: number | null; cvar95Pct: number | null };
+  method: string;
+  caveats: string[];
+  generatedAt: number;
+}
+
+export const edgeApi = {
+  report: () => fetchJson<EdgeReport>('/api/edge'),
+};
+
+// ── Portfolio data plane: live account + ETF flows + backtest ────────────────
+
+export interface BackendAccount {
+  operator: string;
+  venue: string;
+  perps: {
+    availableBalance: number | null;
+    positions: Array<{ symbol: string; positionSide?: string; quantity?: string; entryPrice?: string; markPrice?: string; unrealizedPnl?: string; [k: string]: unknown }>;
+    orders: Array<{ orderId?: string | number; clOrdID?: string; symbol?: string; side?: string | number; type?: string | number; price?: string; quantity?: string; status?: string | number; createdAt?: number; [k: string]: unknown }>;
+  };
+  spot: Array<{ asset?: string; symbol?: string; currency?: string; free?: string; available?: string; balance?: string; locked?: string; [k: string]: unknown }>;
+  fetchedAt: number;
+  error?: string;
+}
+
+export interface EtfFlowDay {
+  date: string;
+  totalNetAssets?: number;
+  totalNetFlow?: number;
+  dailyNetFlow?: number;
+  btcHoldings?: number;
+  fundCount?: number;
+}
+
+export interface BackendEtfFlows {
+  symbol: 'BTC' | 'ETH';
+  history: EtfFlowDay[];
+  note: string;
+  fetchedAt: number;
+  error?: string;
+}
+
+export interface BackendBacktest {
+  n: number;
+  window: { from: string | null; to: string | null };
+  strategy: {
+    totalReturnPct: number; sharpe: number | null; sharpeDiscounted: number | null;
+    sortino: number | null; maxDrawdownPct: number; winRate: number | null;
+    calmar: number | null; equity: Array<{ date: string; value: number }>;
+  };
+  buyHold: { totalReturnPct: number; sharpe: number | null; maxDrawdownPct: number; correlationToStrategy: number | null };
+  monteCarlo: { paths: number; var95Pct: number | null; cvar95Pct: number | null };
+  caveats: string[];
+  generatedAt: number;
+}
+
+export const portfolioApi = {
+  account: () => fetchJson<BackendAccount>('/api/account'),
+  etf: (symbol: 'BTC' | 'ETH') => fetchJson<BackendEtfFlows>(`/api/etf?symbol=${symbol}`),
+  backtest: () => fetchJson<BackendBacktest>('/api/backtest'),
+};
+
 // ── WebSocket ────────────────────────────────────────────────────────────────
 
 export type WsMessage =

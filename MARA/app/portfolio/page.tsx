@@ -8,10 +8,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AccountMenu } from '@/components/AccountMenu';
 import { openOnboarding } from '@/components/Onboarding';
 import {
-  api, createWebSocket, timeAgo,
+  api, portfolioApi, createWebSocket, timeAgo,
   type BackendTrade, type BackendRisk, type BackendMarkets, type BackendNewsItem,
   type BackendDiag, type BackendDecision, type BackendPerformanceSummary,
+  type BackendAccount, type BackendEtfFlows, type BackendBacktest,
 } from '@/lib/api';
+
+type DeskTab = 'positions' | 'exchange' | 'etf' | 'quant';
 
 interface LogRow { id: string; time: string; tag: string; text: string; tone: 'bull' | 'bear' | 'flat' }
 
@@ -41,6 +44,14 @@ export default function PortfolioPage() {
 
   const [sortConfig, setSortConfig] = useState<{ key: 'symbol' | 'pnl', direction: 'asc' | 'desc' } | null>(null);
   const [isTradeModalOpen, setIsTradeModalOpen] = useState(false);
+
+  // Wave 5 desk tabs: exchange-truth, institutional flows, quant
+  const [deskTab, setDeskTab] = useState<DeskTab>('positions');
+  const [account, setAccount] = useState<BackendAccount | null>(null);
+  const [etfBtc, setEtfBtc] = useState<BackendEtfFlows | null>(null);
+  const [etfEth, setEtfEth] = useState<BackendEtfFlows | null>(null);
+  const [etfSymbol, setEtfSymbol] = useState<'BTC' | 'ETH'>('BTC');
+  const [backtest, setBacktest] = useState<BackendBacktest | null>(null);
 
   // Fire Live Run form
   const [runEvent, setRunEvent] = useState('CPI YoY');
@@ -73,11 +84,15 @@ export default function PortfolioPage() {
       void api.trades().then(setTrades).catch(() => {});
       void api.risk().then(setRisk).catch(() => {});
       void api.markets().then(setMarkets).catch(() => {});
+      void portfolioApi.account().then(setAccount).catch(() => {});
     };
     load();
     void api.news().then(setNews).catch(() => {});
     void api.diag().then(setDiag).catch(() => {});
     void api.perfSummary().then(setPerf).catch(() => {});
+    void portfolioApi.etf('BTC').then(setEtfBtc).catch(() => {});
+    void portfolioApi.etf('ETH').then(setEtfEth).catch(() => {});
+    void portfolioApi.backtest().then(setBacktest).catch(() => {});
     void api.decisions().then((ds) => {
       if (ds.length) {
         setLatestDecision(ds[0]);
@@ -212,6 +227,7 @@ export default function PortfolioPage() {
         <div className="flex items-center gap-4 text-[10px] tracking-widest text-muted">
           <Link href="/duel" className="text-amber hover:text-foreground transition-colors uppercase">Duel</Link>
           <Link href="/replay" className="hover:text-foreground transition-colors uppercase">Replay</Link>
+          <Link href="/edge" className="hover:text-foreground transition-colors uppercase">Edge</Link>
           <button onClick={openOnboarding} aria-label="Help" className="hover:text-amber transition-colors"><HelpCircle className="w-3.5 h-3.5" /></button>
           <span className="hidden md:inline">{time}</span>
           <AccountMenu />
@@ -231,6 +247,7 @@ export default function PortfolioPage() {
                 { label: 'Cognition Terminal', href: '/terminal', active: false },
                 { label: 'Signal Duel', href: '/duel', active: false },
                 { label: 'Time Machine', href: '/replay', active: false },
+                { label: 'Proof of Edge', href: '/edge', active: false },
               ].map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className={`block p-2 cursor-pointer transition-colors ${item.active ? 'bg-amber/10 text-amber border-l-2 border-amber' : 'text-muted hover:bg-foreground/5 hover:text-foreground'}`}>
@@ -317,8 +334,21 @@ export default function PortfolioPage() {
           {/* Positions table — REAL trades */}
           <div className="flex-1 mara-glass p-0 flex flex-col min-h-0 relative overflow-hidden bg-background/20">
              <div className="h-8 border-b border-glass-border flex items-center px-4 justify-between bg-foreground/[0.02]">
-               <div className="text-[10px] text-muted tracking-widest uppercase">
-                 Agent Positions {risk ? `· ${risk.openPositions} open / limit ${risk.limits?.maxOpenPositions ?? '—'}` : ''}
+               <div className="flex items-center gap-1">
+                 {([
+                   ['positions', risk ? `Agent Positions · ${risk.openPositions} open` : 'Agent Positions'],
+                   ['exchange', 'Exchange · SoDEX'],
+                   ['etf', 'ETF Flows'],
+                   ['quant', 'Quant'],
+                 ] as Array<[DeskTab, string]>).map(([tab, label]) => (
+                   <button
+                     key={tab}
+                     onClick={() => setDeskTab(tab)}
+                     className={`text-[10px] tracking-widest uppercase px-3 py-1 transition-colors ${deskTab === tab ? 'text-amber bg-amber/10' : 'text-muted hover:text-foreground'}`}
+                   >
+                     {label}
+                   </button>
+                 ))}
                </div>
                <button
                  onClick={() => setIsTradeModalOpen(true)}
@@ -327,6 +357,194 @@ export default function PortfolioPage() {
                  Fire Live Run
                </button>
              </div>
+
+             {/* ── Exchange tab: signed SoDEX reads — venue truth, not our DB ── */}
+             {deskTab === 'exchange' && (
+               <div className="flex-1 overflow-auto p-4 space-y-6">
+                 {!account ? (
+                   <div className="text-[10px] text-muted">reading the venue (signed request)…</div>
+                 ) : (
+                   <>
+                     <div className="flex flex-wrap gap-6 items-baseline">
+                       <div>
+                         <div className="text-[9px] text-muted tracking-widest uppercase mb-1">Perps available</div>
+                         <div className="text-2xl font-light text-foreground">
+                           {account.perps.availableBalance !== null ? `$${account.perps.availableBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+                         </div>
+                       </div>
+                       <div className="text-[10px] text-muted tracking-widest uppercase">
+                         {account.venue} · operator {account.operator.slice(0, 6)}…{account.operator.slice(-4)}
+                       </div>
+                     </div>
+
+                     <div>
+                       <div className="text-[9px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Open positions on the venue ({account.perps.positions.length})</div>
+                       {account.perps.positions.length === 0 ? (
+                         <div className="text-[10px] text-muted font-sans py-2">Flat on the exchange right now — the honest state of the book.</div>
+                       ) : (
+                         <table className="w-full text-xs text-left border-collapse">
+                           <thead><tr className="text-muted border-b border-glass-border/50">
+                             <th className="pb-2 font-normal">SYMBOL</th><th className="pb-2 font-normal">SIDE</th>
+                             <th className="pb-2 font-normal text-right">QTY</th><th className="pb-2 font-normal text-right">ENTRY</th>
+                             <th className="pb-2 font-normal text-right">MARK</th><th className="pb-2 font-normal text-right">uPNL</th>
+                           </tr></thead>
+                           <tbody className="text-foreground/80">
+                             {account.perps.positions.map((p, i) => (
+                               <tr key={`${p.symbol}-${i}`} className="border-b border-glass-border/30">
+                                 <td className="py-2 text-foreground">{String(p.symbol ?? '—')}</td>
+                                 <td className={`py-2 text-[10px] ${String(p.positionSide).toUpperCase() === 'SHORT' ? 'text-coral' : 'text-olive'}`}>{String(p.positionSide ?? '—')}</td>
+                                 <td className="py-2 text-right text-muted">{String(p.quantity ?? '—')}</td>
+                                 <td className="py-2 text-right text-muted">{String(p.entryPrice ?? '—')}</td>
+                                 <td className="py-2 text-right text-muted">{String(p.markPrice ?? '—')}</td>
+                                 <td className={`py-2 text-right ${parseFloat(String(p.unrealizedPnl ?? '0')) >= 0 ? 'text-olive' : 'text-coral'}`}>{String(p.unrealizedPnl ?? '—')}</td>
+                               </tr>
+                             ))}
+                           </tbody>
+                         </table>
+                       )}
+                     </div>
+
+                     <div>
+                       <div className="text-[9px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Orders on the book ({account.perps.orders.length})</div>
+                       {account.perps.orders.length === 0 ? (
+                         <div className="text-[10px] text-muted font-sans py-2">No resting orders. Fire a live run and the EIP-712-signed order will appear here, read back from SoDEX itself.</div>
+                       ) : (
+                         <table className="w-full text-xs text-left border-collapse">
+                           <thead><tr className="text-muted border-b border-glass-border/50">
+                             <th className="pb-2 font-normal">ORDER</th><th className="pb-2 font-normal">SYMBOL</th>
+                             <th className="pb-2 font-normal text-right">PRICE</th><th className="pb-2 font-normal text-right">QTY</th>
+                             <th className="pb-2 font-normal text-right">STATUS</th>
+                           </tr></thead>
+                           <tbody className="text-foreground/80">
+                             {account.perps.orders.slice(0, 12).map((o, i) => (
+                               <tr key={`${o.orderId ?? o.clOrdID ?? i}`} className="border-b border-glass-border/30">
+                                 <td className="py-2 text-muted">{String(o.clOrdID ?? o.orderId ?? '—').slice(0, 14)}</td>
+                                 <td className="py-2 text-foreground">{String(o.symbol ?? '—')}</td>
+                                 <td className="py-2 text-right text-muted">{String(o.price ?? '—')}</td>
+                                 <td className="py-2 text-right text-muted">{String(o.quantity ?? '—')}</td>
+                                 <td className="py-2 text-right text-[10px] text-muted">{String(o.status ?? '—')}</td>
+                               </tr>
+                             ))}
+                           </tbody>
+                         </table>
+                       )}
+                     </div>
+
+                     {account.spot.length > 0 && (
+                       <div>
+                         <div className="text-[9px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Spot balances (SSI rotation account)</div>
+                         <div className="flex flex-wrap gap-2">
+                           {account.spot.slice(0, 10).map((s, i) => (
+                             <span key={i} className="border border-glass-border px-3 py-1.5 text-[10px] text-foreground">
+                               {String(s.asset ?? s.symbol ?? s.currency ?? '?')} <span className="text-muted">{String(s.free ?? s.available ?? s.balance ?? '')}</span>
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+                   </>
+                 )}
+               </div>
+             )}
+
+             {/* ── ETF flows tab: SoSoValue US spot-ETF daily net flows ── */}
+             {deskTab === 'etf' && (() => {
+               const etf = etfSymbol === 'BTC' ? etfBtc : etfEth;
+               const hist = (etf?.history ?? []).slice(0, 14).reverse();
+               const flows = hist.map((h) => h.dailyNetFlow ?? h.totalNetFlow ?? 0);
+               const maxAbs = Math.max(...flows.map(Math.abs), 1);
+               const fmtUsd = (v: number) => {
+                 const a = Math.abs(v);
+                 const s = a >= 1e9 ? `${(a / 1e9).toFixed(2)}B` : a >= 1e6 ? `${(a / 1e6).toFixed(1)}M` : a >= 1e3 ? `${(a / 1e3).toFixed(0)}K` : a.toFixed(0);
+                 return `${v < 0 ? '-' : '+'}$${s}`;
+               };
+               return (
+                 <div className="flex-1 overflow-auto p-4 flex flex-col">
+                   <div className="flex items-center justify-between mb-4">
+                     <div className="flex gap-1">
+                       {(['BTC', 'ETH'] as const).map((s) => (
+                         <button key={s} onClick={() => setEtfSymbol(s)}
+                           className={`text-[10px] tracking-widest uppercase px-3 py-1 border transition-colors ${etfSymbol === s ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}>
+                           {s} spot ETFs
+                         </button>
+                       ))}
+                     </div>
+                     {hist.length > 0 && hist[hist.length - 1].totalNetAssets !== undefined && (
+                       <div className="text-[10px] text-muted tracking-widest uppercase">
+                         Net assets {fmtUsd(hist[hist.length - 1].totalNetAssets ?? 0).replace('+', '')}
+                       </div>
+                     )}
+                   </div>
+                   {!etf ? (
+                     <div className="text-[10px] text-muted">loading SoSoValue ETF data…</div>
+                   ) : hist.length === 0 ? (
+                     <div className="text-[10px] text-muted font-sans">{etf.error ?? 'No ETF history returned.'}</div>
+                   ) : (
+                     <>
+                       <div className="flex-1 flex items-end gap-1.5 min-h-[120px] border-b border-glass-border pb-px">
+                         {hist.map((h, i) => {
+                           const v = flows[i];
+                           return (
+                             <div key={h.date} className="flex-1 flex flex-col justify-end items-center gap-1 group relative">
+                               <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 text-[9px] text-foreground whitespace-nowrap">{fmtUsd(v)}</div>
+                               <div
+                                 className={`w-full ${v >= 0 ? 'bg-olive/70' : 'bg-coral/70'} group-hover:opacity-100 opacity-80`}
+                                 style={{ height: `${Math.max(3, (Math.abs(v) / maxAbs) * 110)}px` }}
+                               />
+                             </div>
+                           );
+                         })}
+                       </div>
+                       <div className="flex justify-between text-[9px] text-muted tracking-widest uppercase mt-2">
+                         <span>{hist[0]?.date}</span>
+                         <span>daily net flow · green in / red out</span>
+                         <span>{hist[hist.length - 1]?.date}</span>
+                       </div>
+                       <p className="text-[10px] text-muted font-sans leading-relaxed mt-4">{etf.note}</p>
+                     </>
+                   )}
+                 </div>
+               );
+             })()}
+
+             {/* ── Quant tab: the backtest engine, honestly discounted ── */}
+             {deskTab === 'quant' && (
+               <div className="flex-1 overflow-auto p-4">
+                 {!backtest ? (
+                   <div className="text-[10px] text-muted">running the numbers…</div>
+                 ) : backtest.n === 0 ? (
+                   <div className="text-[10px] text-muted font-sans">{backtest.caveats[0]}</div>
+                 ) : (
+                   <div className="space-y-6">
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-foreground/10 border border-foreground/10">
+                       {([
+                         ['Strategy return', `${backtest.strategy.totalReturnPct >= 0 ? '+' : ''}${backtest.strategy.totalReturnPct}%`, backtest.strategy.totalReturnPct >= 0],
+                         ['vs Buy & hold', `${backtest.buyHold.totalReturnPct >= 0 ? '+' : ''}${backtest.buyHold.totalReturnPct}%`, backtest.buyHold.totalReturnPct >= 0],
+                         ['Sharpe (×0.5 disc.)', backtest.strategy.sharpeDiscounted !== null ? String(backtest.strategy.sharpeDiscounted) : '—', true],
+                         ['Sortino', backtest.strategy.sortino !== null ? String(backtest.strategy.sortino) : '—', true],
+                         ['Max drawdown', `${backtest.strategy.maxDrawdownPct}%`, false],
+                         ['Win rate', backtest.strategy.winRate !== null ? `${backtest.strategy.winRate}%` : '—', true],
+                         ['VaR 95 (MC ×1000)', backtest.monteCarlo.var95Pct !== null ? `${backtest.monteCarlo.var95Pct}%` : '—', false],
+                         ['CVaR 95', backtest.monteCarlo.cvar95Pct !== null ? `${backtest.monteCarlo.cvar95Pct}%` : '—', false],
+                       ] as Array<[string, string, boolean]>).map(([k, v, pos]) => (
+                         <div key={k} className="bg-background p-4">
+                           <div className="text-[9px] text-muted tracking-[0.25em] uppercase mb-2">{k}</div>
+                           <div className={`text-xl font-light ${v.startsWith('+') ? 'text-olive' : v.startsWith('-') && pos ? 'text-coral' : 'text-foreground'}`}>{v}</div>
+                         </div>
+                       ))}
+                     </div>
+                     <div className="text-[10px] text-muted font-sans leading-relaxed space-y-1">
+                       {backtest.caveats.map((cv) => <div key={cv}>· {cv}</div>)}
+                     </div>
+                     <Link href="/edge" className="inline-block text-[10px] tracking-widest uppercase border border-amber/40 text-amber px-4 py-2 hover:bg-amber/10 transition-colors">
+                       Full head-to-head → Proof of Edge
+                     </Link>
+                   </div>
+                 )}
+               </div>
+             )}
+
+             {deskTab === 'positions' && (
              <div className="flex-1 overflow-auto p-4">
                {trades.length === 0 ? (
                  <div className="h-full flex flex-col items-center justify-center text-center gap-4 px-8">
@@ -380,6 +598,7 @@ export default function PortfolioPage() {
                </table>
                )}
              </div>
+             )}
           </div>
 
           {/* Bottom Row — real execution log + real equity curve */}

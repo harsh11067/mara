@@ -7,7 +7,7 @@ import { MonetaryCore } from '@/components/landing/MonetaryCore';
 import { AccountMenu } from '@/components/AccountMenu';
 import { openOnboarding } from '@/components/Onboarding';
 import Link from 'next/link';
-import { ArrowRight, Activity, Zap, BrainCircuit, BarChart3, Globe, Fingerprint, Swords, History, HelpCircle } from 'lucide-react';
+import { ArrowRight, Activity, Zap, BrainCircuit, BarChart3, Globe, Fingerprint, Swords, History, HelpCircle, ShieldCheck } from 'lucide-react';
 import {
   api, replayApi, timeAgo, convictionTone,
   type BackendDecision, type BackendRegime, type BackendPerformanceSummary, type ReplayTimeline,
@@ -48,6 +48,7 @@ export default function LandingPage() {
           <Link href="/terminal" className="hover:text-foreground transition-colors duration-500 hidden sm:inline">Terminal</Link>
           <Link href="/duel" className="text-amber hover:text-foreground transition-colors duration-500">Duel</Link>
           <Link href="/replay" className="hover:text-foreground transition-colors duration-500">Replay</Link>
+          <Link href="/edge" className="hover:text-foreground transition-colors duration-500">Edge</Link>
           <Link href="/portfolio" className="hover:text-foreground transition-colors duration-500 hidden sm:inline">Portfolio</Link>
           <button onClick={openOnboarding} aria-label="How it works" className="hover:text-amber transition-colors">
             <HelpCircle className="w-4 h-4" />
@@ -305,7 +306,7 @@ export default function LandingPage() {
           <h2 className="font-display text-[6vw] leading-[0.9] tracking-tight mb-20">
             Don&apos;t just watch it. <span className="text-muted italic">Play it.</span>
           </h2>
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
             <Link href="/duel">
               <motion.div
                 className="border border-amber/30 bg-background p-14 relative overflow-hidden group h-full"
@@ -335,12 +336,31 @@ export default function LandingPage() {
                   <History className="w-80 h-80" strokeWidth={0.5} />
                 </div>
                 <div className="font-mono text-[9px] tracking-[0.3em] text-muted uppercase mb-6">Time Machine</div>
-                <h3 className="font-display text-4xl md:text-5xl leading-tight mb-6">Scrub a decade<br/>of macro prints.</h3>
+                <h3 className="font-display text-4xl md:text-5xl leading-tight mb-6">Scrub two years<br/>of macro prints.</h3>
                 <p className="text-muted font-light text-lg leading-relaxed mb-10 max-w-md">
-                  Watch MARA re-decide every CPI, NFP and FOMC in history — no lookahead, honest stand-downs, real forward returns.
+                  Watch MARA re-decide every CPI, NFP and FOMC in the corpus — no lookahead, honest stand-downs, real forward returns.
                 </p>
                 <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-foreground inline-flex items-center gap-3 group-hover:text-amber transition-colors">
                   Rewind time <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                </span>
+              </motion.div>
+            </Link>
+            <Link href="/edge">
+              <motion.div
+                className="border border-olive/30 bg-background p-14 relative overflow-hidden group h-full"
+                whileHover={{ y: -12, rotateZ: 0.5 }}
+                transition={{ type: 'spring', stiffness: 50, damping: 16 }}
+              >
+                <div className="absolute -right-16 -bottom-16 text-olive/[0.04] group-hover:text-olive/[0.08] transition-colors duration-700">
+                  <ShieldCheck className="w-80 h-80" strokeWidth={0.5} />
+                </div>
+                <div className="font-mono text-[9px] tracking-[0.3em] text-olive uppercase mb-6">Proof of Edge</div>
+                <h3 className="font-display text-4xl md:text-5xl leading-tight mb-6">Four strategies.<br/>One gauntlet.</h3>
+                <p className="text-muted font-light text-lg leading-relaxed mb-10 max-w-md">
+                  MARA vs a version of itself that never stands down, a naive z-chaser, and buy-and-hold — same prints, zero lookahead, losses included.
+                </p>
+                <span className="font-mono text-[10px] tracking-[0.3em] uppercase text-foreground inline-flex items-center gap-3 group-hover:text-amber transition-colors">
+                  See the measurement <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                 </span>
               </motion.div>
             </Link>

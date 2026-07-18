@@ -51,6 +51,8 @@ import { BTC_CURRENCY_ID } from '../services/sosovalue-client.js';
 import { authRoutes } from './auth.js';
 import { duelRoutes } from './duel.js';
 import { replayRoutes } from './replay.js';
+import { edgeRoutes } from './edge.js';
+import { portfolioRoutes } from './portfolio.js';
 import { tryAcquireTrigger } from './trigger-lock.js';
 
 const logger = createLogger('API');
@@ -501,6 +503,10 @@ app.get('/api/simulate-order', async (c) => {
 authRoutes(app);
 duelRoutes(app, broadcast);
 replayRoutes(app);
+
+// ── Wave 5 surfaces: Proof-of-Edge gauntlet + portfolio data plane ────────────
+edgeRoutes(app);
+portfolioRoutes(app);
 
 // ── Static dashboard hosting (single-origin deploy) ───────────────────────────
 // When the dashboard build exists (Render buildCommand builds it), serve it from

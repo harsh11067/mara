@@ -135,6 +135,7 @@ export default function ReplayPage() {
             <Link href="/terminal" className="hover:text-foreground transition-colors">Terminal</Link>
             <Link href="/duel" className="text-amber hover:text-foreground transition-colors">Duel</Link>
             <span className="text-foreground border-b border-foreground/30 pb-1">Replay</span>
+            <Link href="/edge" className="hover:text-foreground transition-colors">Edge</Link>
             <Link href="/portfolio" className="hover:text-foreground transition-colors">Portfolio</Link>
           </div>
         </div>

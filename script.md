@@ -1,9 +1,16 @@
 # MARA — Product Launch Video Script
 
 > Target length: **90 seconds** (a 60-second cut is marked inline).
-> Format: screen-capture cinematic — near-black UI, spectral glow, kinetic type.
+> Format: screen-capture cinematic — near-black UI, amber phosphor glow, kinetic type.
 > Music: low pulsing synth, 80 BPM, builds to a single drop at the EXECUTE beat.
 > Voice: calm, measured, one notch above a whisper. No hype-voice.
+>
+> **2026-07-19 as-built revision:** captures now come from the MARA Next.js frontend
+> (`mara-neon.vercel.app`) — routes `/`, `/terminal`, `/duel`, `/edge`, `/replay`, `/portfolio`.
+> The old Vite `/track`, `/diag` and `/judges` pages are gone: track-record beats capture on
+> **`/edge`**, diagnostics beats capture on the **`/portfolio` Data-Plane probes**, and triggers
+> fire from the **`/portfolio` "Fire Live Run"** modal. This is the launch-film cut; the longer
+> judge-facing walkthrough (with steps) is `demonstration.md`.
 
 ---
 
@@ -67,14 +74,17 @@ Sync each VO line to its stage lighting up.
 
 ## PROOF, NOT PROMISES — 0:56–1:10
 
-**VISUAL:** Cut to the /track page: HIT / STOP / DRIFT chips, the counterfactual
-equity curve animating. Then the /diag page: 8/8 checks flipping green, latencies
-visible. Then the proof strip counting up: `35 endpoints · 118 catalysts · 8/8 green`.
+**VISUAL:** Cut to **`/edge`** — the restraint headline ("+14.7% from standing down"),
+then the four-column gauntlet scoreboard, then a slow scroll of the stand-down
+ledger (green "dodged" rows and red "missed" rows both on screen). End on the
+`/portfolio` Quant tab: `Sharpe (×0.5 disc.)` visible, and the Data-Plane probes
+pulsing with live latencies.
 
 **VO:**
-> "Every thesis is dated. Every outcome is resolved — hit, stop, or drift —
-> losses included, next to what buy-and-hold would have paid.
-> The backtest even discounts its own Sharpe ratio, because honest math
+> "Four strategies. The same two years of real prints. Zero lookahead.
+> Buy-and-hold wins the bull market — MARA's own page says so.
+> What MARA sells is restraint: every print it refused is in the ledger,
+> and the backtest discounts its own Sharpe ratio, because honest math
 > beats a good story."
 
 *(⏱ 60-SECOND CUT: end here — jump to CTA.)*
@@ -98,7 +108,7 @@ with live JSON. The answer cites 12 analogs and a hit rate.
 ## CTA — 1:20–1:30
 
 **VISUAL:** Return to the hero. The pulse line settles into a steady heartbeat.
-URL fades in, then the three chips: `SoSoValue · 35 endpoints` /
+URL fades in, then the three chips: `SoSoValue · 36 endpoints` /
 `SoDEX testnet · EIP-712` / `mcp-mara · 8 tools`.
 
 **VO:**
@@ -108,7 +118,7 @@ URL fades in, then the three chips: `SoSoValue · 35 endpoints` /
 > **MARA** — built on SoSoValue + SoDEX
 > `Enter the terminal →`
 
-**END CARD (2s):** SoSoValue Buildathon Wave 3 · testnet · backtests ≠ future returns.
+**END CARD (2s):** SoSoValue Buildathon · testnet · backtests ≠ future returns.
 
 ---
 
@@ -116,14 +126,17 @@ URL fades in, then the three chips: `SoSoValue · 35 endpoints` /
 
 | # | Page / asset | Action to capture |
 |---|---|---|
-| 1 | `/` hero | initial load animation, caret blink, rings orbiting |
-| 2 | `/` tape | live prices scrolling (hover-pause once) |
-| 3 | `/` pipeline | slow scroll — ECG draws, ghost words light |
-| 4 | `/terminal` | trigger a sample thesis from `/judges`, capture agent trace streaming |
-| 5 | `/track` | equity curve + HIT/STOP/DRIFT chips |
-| 6 | `/diag` | checks flipping green on refresh |
-| 7 | Claude Desktop | live `mcp-mara` tool call round-trip |
-| 8 | Terminal (shell) | `curl -X POST .../api/trigger` + backend log scrolling |
+| 1 | `/` hero | initial load, monetary core spinning, regime-tinted ambient glow |
+| 2 | `/` §02 meters | live regime numbers (trend / vol / size multiplier) |
+| 3 | `/` §07 arena | the three play cards (Duel / Time Machine / Proof of Edge) |
+| 4 | `/terminal` | Fire Live Run → agent trace streaming, verdict card landing |
+| 5 | `/duel` | stake 100 CR pre-verdict → scanline thinking phase → result stamp |
+| 6 | `/edge` | restraint headline → 4-way scoreboard → stand-down ledger scroll |
+| 7 | `/replay` | Prophecy-mode guess, one print, graded |
+| 8 | `/portfolio` | tab click-through: Exchange (venue reads) → ETF Flows → Quant; probes pulsing |
+| 9 | Claude Desktop | live `mcp-mara` tool call round-trip |
+| 10 | Telegram | broadcast arriving on a phone frame |
+| 11 | Terminal (shell) | `curl -X POST .../api/trigger` + backend log scrolling |
 
 ## Production notes
 - Capture at 1440p+, 60 fps; slow every UI scroll to 0.75× in the edit.

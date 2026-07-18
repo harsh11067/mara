@@ -128,6 +128,7 @@ export default function TerminalPage() {
             <span className="text-foreground border-b border-foreground/30 pb-1">Cognition</span>
             <Link href="/duel" className="text-amber hover:text-foreground transition-colors cursor-pointer">Duel</Link>
             <Link href="/replay" className="hover:text-foreground transition-colors cursor-pointer">Replay</Link>
+            <Link href="/edge" className="hover:text-foreground transition-colors cursor-pointer">Edge</Link>
             <Link href="/portfolio" className="hover:text-foreground transition-colors cursor-pointer">Portfolio</Link>
           </div>
         </div>

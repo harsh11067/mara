@@ -73,10 +73,19 @@ export async function activateKillSwitch(reason: string): Promise<void> {
           if (qty <= 0) continue;
 
           const isLong = pos.positionSide !== 'SHORT';
+
+          // Resolve the position's real exchange symbolID before building the order
+          const symbols = await client.getPerpsSymbols();
+          const sym = symbols.find((s) => s.symbol === pos.symbol && s.status === 'TRADING');
+          if (!sym) {
+            logger.warn(`Kill switch: could not find active symbol for ${pos.symbol}`);
+            continue;
+          }
+
           // Market close order
           const closeReq = {
             accountID: accountId,
-            symbolID: 0, // Need actual symbolID — we'll use getBtcSymbol for BTC
+            symbolID: sym.symbolId,
             orders: [{
               clOrdID:     `ks-${Date.now()}-close`,
               modifier:    1,  // Normal
@@ -88,15 +97,6 @@ export async function activateKillSwitch(reason: string): Promise<void> {
               positionSide: 1, // Both (one-way mode)
             }],
           };
-
-          // Get symbolID for the position's symbol
-          const symbols = await client.getPerpsSymbols();
-          const sym = symbols.find((s) => s.symbol === pos.symbol && s.status === 'TRADING');
-          if (!sym) {
-            logger.warn(`Kill switch: could not find active symbol for ${pos.symbol}`);
-            continue;
-          }
-          closeReq.symbolID = sym.symbolId;
 
           const { headers, body } = signer.signNewOrder(closeReq as Parameters<typeof signer.signNewOrder>[0]);
           const res = await fetch(`${base}/perps/trade/orders`, {

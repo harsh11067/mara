@@ -33,7 +33,7 @@ export interface RegimeState {
   explanation: string;
 }
 
-const REGIME_RISK: Record<Regime, RegimeState['risk']> = {
+export const REGIME_RISK: Record<Regime, RegimeState['risk']> = {
   BULL_QUIET:    { sizeMultiplier: 1.0,  stopMultiplier: 1.0, convictionFloor: 60 },
   BULL_VOLATILE: { sizeMultiplier: 0.6,  stopMultiplier: 1.4, convictionFloor: 65 },
   RANGING:       { sizeMultiplier: 0.75, stopMultiplier: 1.0, convictionFloor: 65 },
