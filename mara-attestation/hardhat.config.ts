@@ -81,8 +81,8 @@ const config: HardhatUserConfig = {
         chainId: 138565,
         urls: {
           // Replace with actual ValueChain testnet explorer URL
-          apiURL: "https://testnet-scan.valuechain.xyz/api",
-          browserURL: "https://testnet-scan.valuechain.xyz",
+          apiURL: "https://testnet.sodex.com/explorer/api",
+          browserURL: "https://testnet.sodex.com/explorer",
         },
       },
       {

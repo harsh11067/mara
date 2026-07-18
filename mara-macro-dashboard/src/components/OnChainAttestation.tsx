@@ -40,7 +40,7 @@ function shortenAddr(addr: string): string {
 function explorerUrl(addr: string, chainId = 138565): string {
   // ValueChain testnet explorer
   const base = chainId === 138565
-    ? 'https://testnet-scan.valuechain.xyz'
+    ? 'https://testnet.sodex.com/explorer'
     : 'https://main-scan.valuechain.xyz';
   return `${base}/address/${addr}`;
 }

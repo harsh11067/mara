@@ -35,7 +35,7 @@ const HARDHAT_DEFAULT = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
 const PRODUCTION_CHAINS = new Set([138565, 286623, 11155111]); // ValueChain testnet, mainnet, Sepolia
 
 const EXPLORERS: Record<number, string> = {
-  138565: "https://testnet-scan.valuechain.xyz",
+  138565: "https://testnet.sodex.com/explorer",
   286623: "https://main-scan.valuechain.xyz",
   11155111: "https://sepolia.etherscan.io",
 };
