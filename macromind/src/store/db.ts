@@ -189,6 +189,65 @@ function runMigrations(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_duels_user    ON duels(user_id);
     CREATE INDEX IF NOT EXISTS idx_duels_outcome ON duels(outcome);
 
+    -- Wave 6: Arcade — fast credit bets on real BTC price moves (web + Telegram)
+    CREATE TABLE IF NOT EXISTS arcade_bets (
+      id           TEXT PRIMARY KEY,
+      user_id      TEXT NOT NULL REFERENCES users(id),
+      game         TEXT NOT NULL,                     -- 'PULSE' | 'OVERUNDER'
+      pick         TEXT NOT NULL,                     -- UP/DOWN | OVER/UNDER
+      stake        INTEGER NOT NULL,
+      symbol       TEXT NOT NULL,
+      strike       REAL NOT NULL,                     -- live price at bet time
+      threshold    REAL,                              -- OVERUNDER band in %
+      resolve_at   INTEGER NOT NULL,
+      settle_price REAL,
+      outcome      TEXT NOT NULL DEFAULT 'PENDING',   -- PENDING | WIN | LOSS | VOID
+      payout       INTEGER NOT NULL DEFAULT 0,
+      source       TEXT NOT NULL DEFAULT 'web',       -- 'web' | 'telegram'
+      tg_chat_id   TEXT,                              -- DM target for telegram bets
+      created_at   INTEGER NOT NULL,
+      resolved_at  INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_arcade_user    ON arcade_bets(user_id);
+    CREATE INDEX IF NOT EXISTS idx_arcade_pending ON arcade_bets(outcome, resolve_at);
+
+    -- Wave 6: Concierge chat quota (3 free questions, credit-unlocked packs)
+    CREATE TABLE IF NOT EXISTS chat_usage (
+      user_id    TEXT PRIMARY KEY REFERENCES users(id),
+      used       INTEGER NOT NULL DEFAULT 0,
+      quota      INTEGER NOT NULL DEFAULT 3,
+      updated_at INTEGER NOT NULL
+    );
+
+    -- Wave 6: Feedback requests (surfaced to the operator via Telegram)
+    CREATE TABLE IF NOT EXISTS feedback (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT,
+      email       TEXT NOT NULL,
+      category    TEXT NOT NULL,
+      subject     TEXT,
+      description TEXT NOT NULL,
+      page        TEXT,
+      created_at  INTEGER NOT NULL
+    );
+
+    -- Wave 6: The Floor — community strategy comments
+    CREATE TABLE IF NOT EXISTS comments (
+      id         TEXT PRIMARY KEY,
+      user_id    TEXT NOT NULL REFERENCES users(id),
+      name       TEXT NOT NULL,
+      body       TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_comments_time ON comments(created_at);
+
+    -- Wave 6: Referrals — invited user → referrer, one bonus each
+    CREATE TABLE IF NOT EXISTS referrals (
+      user_id     TEXT PRIMARY KEY REFERENCES users(id),
+      referrer_id TEXT NOT NULL REFERENCES users(id),
+      created_at  INTEGER NOT NULL
+    );
+
     -- Indices for fast lookups
     CREATE INDEX IF NOT EXISTS idx_events_date   ON events(date);
     CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);

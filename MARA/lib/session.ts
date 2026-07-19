@@ -124,8 +124,20 @@ export async function loginGuest(name?: string): Promise<void> {
   applySession(await authApi.guest(name));
 }
 
+/** Referral code captured from ?ref= on any landing (see app/page.tsx). */
+export function pendingReferral(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  return localStorage.getItem('mara_ref') ?? undefined;
+}
+
+export function captureReferral(): void {
+  if (typeof window === 'undefined') return;
+  const ref = new URLSearchParams(window.location.search).get('ref');
+  if (ref && ref.length > 8) localStorage.setItem('mara_ref', ref);
+}
+
 export async function loginGoogleCredential(credential: string): Promise<void> {
-  applySession(await authApi.google(credential));
+  applySession(await authApi.google(credential, pendingReferral()));
 }
 
 export async function loginWallet(wallet: DiscoveredWallet): Promise<void> {
@@ -141,7 +153,7 @@ export async function loginWallet(wallet: DiscoveredWallet): Promise<void> {
     params: [message, address],
   })) as string;
 
-  applySession(await authApi.walletVerify(address, signature));
+  applySession(await authApi.walletVerify(address, signature, pendingReferral()));
 
   // React to wallet-side account switches: our session is bound to the signed
   // address, so a switch means the session no longer matches — sign out.

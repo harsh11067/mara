@@ -53,6 +53,10 @@ import { duelRoutes } from './duel.js';
 import { replayRoutes } from './replay.js';
 import { edgeRoutes } from './edge.js';
 import { portfolioRoutes } from './portfolio.js';
+import { arcadeRoutes } from './arcade.js';
+import { chatRoutes } from './chat.js';
+import { communityRoutes } from './community.js';
+import { getKillState } from '../executor/kill-switch.js';
 import { tryAcquireTrigger } from './trigger-lock.js';
 
 const logger = createLogger('API');
@@ -94,6 +98,7 @@ app.get('/api/status', (c) =>
   c.json({
     running: true,
     killSwitch: isKillSwitchActive(),
+    killState: getKillState(),
     uptime: Math.round(process.uptime()),
     timestamp: Date.now(),
   }),
@@ -507,6 +512,11 @@ replayRoutes(app);
 // ── Wave 5 surfaces: Proof-of-Edge gauntlet + portfolio data plane ────────────
 edgeRoutes(app);
 portfolioRoutes(app);
+
+// ── Wave 6 surfaces: Arcade, Concierge chat, feedback/comments/referrals ─────
+arcadeRoutes(app);
+chatRoutes(app);
+communityRoutes(app);
 
 // ── Static dashboard hosting (single-origin deploy) ───────────────────────────
 // When the dashboard build exists (Render buildCommand builds it), serve it from

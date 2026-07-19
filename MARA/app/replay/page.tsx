@@ -103,7 +103,7 @@ export default function ReplayPage() {
 
   const retMeter = (label: string, v: number | null) => (
     <div key={label}>
-      <div className="flex justify-between font-mono text-[9px] tracking-widest uppercase mb-1.5">
+      <div className="flex justify-between font-mono text-[11px] tracking-widest uppercase mb-1.5">
         <span className="text-muted">{label}</span>
         <span className={v === null ? 'text-muted' : v >= 0 ? 'text-olive' : 'text-coral'}>
           {v === null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`}
@@ -131,7 +131,7 @@ export default function ReplayPage() {
       <header className="fixed top-0 w-full px-8 md:px-12 py-6 flex justify-between items-center z-50 bg-background/70 backdrop-blur-md border-b border-foreground/5">
         <div className="flex gap-10 items-baseline">
           <Link href="/" className="text-2xl tracking-tight text-foreground hover:text-amber transition-colors font-display italic">MARA</Link>
-          <div className="hidden md:flex gap-8 text-[10px] tracking-[0.2em] text-muted uppercase font-mono">
+          <div className="hidden md:flex gap-8 text-xs tracking-[0.2em] text-muted uppercase font-mono">
             <Link href="/terminal" className="hover:text-foreground transition-colors">Terminal</Link>
             <Link href="/duel" className="text-amber hover:text-foreground transition-colors">Duel</Link>
             <span className="text-foreground border-b border-foreground/30 pb-1">Replay</span>
@@ -150,7 +150,7 @@ export default function ReplayPage() {
         {/* Title */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 mb-12">
           <div>
-            <div className="font-mono text-[10px] tracking-[0.4em] text-muted uppercase mb-5 flex items-center gap-3">
+            <div className="font-mono text-xs tracking-[0.4em] text-muted uppercase mb-5 flex items-center gap-3">
               <History className="w-3.5 h-3.5" /> No lookahead · real forward returns
             </div>
             <h1 className="font-display text-6xl md:text-8xl leading-[0.9] tracking-tight">
@@ -167,7 +167,7 @@ export default function ReplayPage() {
           <div className="mara-glass p-6 w-full lg:w-[340px] shrink-0">
             <button
               onClick={() => { setProphecy((p) => !p); setScore({ right: 0, total: 0, streak: 0 }); }}
-              className={`w-full flex items-center justify-between border px-4 py-3 transition-colors font-mono text-[10px] tracking-[0.2em] uppercase ${prophecy ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}
+              className={`w-full flex items-center justify-between border px-4 py-3 transition-colors font-mono text-xs tracking-[0.2em] uppercase ${prophecy ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}
             >
               <span className="flex items-center gap-2"><Target className="w-3.5 h-3.5" /> Prophecy mode</span>
               <span>{prophecy ? 'ON' : 'OFF'}</span>
@@ -178,7 +178,7 @@ export default function ReplayPage() {
                 : 'Turn on to guess each verdict before it\'s revealed — a pure calibration game, no credits at risk.'}
             </p>
             {prophecy && score.total > 0 && (
-              <div className="flex justify-between font-mono text-[10px] tracking-widest uppercase mt-4 pt-4 border-t border-glass-border">
+              <div className="flex justify-between font-mono text-xs tracking-widest uppercase mt-4 pt-4 border-t border-glass-border">
                 <span className="text-foreground">{score.right}/{score.total} matched</span>
                 <span className={score.streak > 1 ? 'text-amber' : 'text-muted'}>streak {score.streak}</span>
               </div>
@@ -192,7 +192,7 @@ export default function ReplayPage() {
             <button
               key={f.event_type}
               onClick={() => setFamily(f.event_type)}
-              className={`px-5 py-2.5 border font-mono text-[10px] tracking-[0.2em] uppercase transition-colors ${family === f.event_type ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground hover:border-foreground/30'}`}
+              className={`px-5 py-2.5 border font-mono text-xs tracking-[0.2em] uppercase transition-colors ${family === f.event_type ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground hover:border-foreground/30'}`}
             >
               {f.event_type}{f.n ? ` · ${f.n}` : ''}
             </button>
@@ -216,7 +216,7 @@ export default function ReplayPage() {
                   ['Cumulative', `${summary.cumulativePnlPct >= 0 ? '+' : ''}${summary.cumulativePnlPct}%`],
                 ].map(([k, v]) => (
                   <div key={k} className="bg-background p-5">
-                    <div className="font-mono text-[9px] text-muted tracking-[0.3em] uppercase mb-2">{k}</div>
+                    <div className="font-mono text-[11px] text-muted tracking-[0.3em] uppercase mb-2">{k}</div>
                     <div className={`font-mono text-2xl font-light ${k === 'Cumulative' ? (summary.cumulativePnlPct >= 0 ? 'text-olive' : 'text-coral') : 'text-foreground'}`}>{v}</div>
                   </div>
                 ))}
@@ -232,7 +232,7 @@ export default function ReplayPage() {
                     <div className="font-display text-4xl md:text-5xl italic text-foreground">{print.date}</div>
                     <button
                       onClick={() => setPlaying((p) => !p)}
-                      className="flex items-center gap-2 border border-glass-border px-5 py-2.5 font-mono text-[10px] tracking-[0.2em] uppercase text-muted hover:text-amber hover:border-amber/40 transition-colors"
+                      className="flex items-center gap-2 border border-glass-border px-5 py-2.5 font-mono text-xs tracking-[0.2em] uppercase text-muted hover:text-amber hover:border-amber/40 transition-colors"
                     >
                       {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                       {playing ? 'Pause' : 'Autoplay'}
@@ -262,7 +262,7 @@ export default function ReplayPage() {
                       );
                     })}
                   </div>
-                  <div className="flex justify-between font-mono text-[9px] text-muted mt-2 tracking-widest uppercase">
+                  <div className="flex justify-between font-mono text-[11px] text-muted mt-2 tracking-widest uppercase">
                     <span>{timeline.prints[0]?.date}</span>
                     <span className="text-foreground">{idx + 1} / {timeline.prints.length}</span>
                     <span>{timeline.prints[timeline.prints.length - 1]?.date}</span>
@@ -277,7 +277,7 @@ export default function ReplayPage() {
                     ['Surprise σ', print.surpriseZ !== null ? print.surpriseZ.toFixed(2) : null],
                   ].map(([k, v]) => (
                     <div key={String(k)} className="bg-background p-6">
-                      <div className="font-mono text-[9px] text-muted tracking-[0.3em] uppercase mb-2">{String(k)}</div>
+                      <div className="font-mono text-[11px] text-muted tracking-[0.3em] uppercase mb-2">{String(k)}</div>
                       <div className="font-mono text-3xl font-light text-foreground">{v ?? '—'}</div>
                     </div>
                   ))}
@@ -291,7 +291,7 @@ export default function ReplayPage() {
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       className="border border-amber/30 bg-background p-10 text-center"
                     >
-                      <div className="font-mono text-[10px] tracking-[0.3em] text-amber uppercase mb-6 flex items-center justify-center gap-2">
+                      <div className="font-mono text-xs tracking-[0.3em] text-amber uppercase mb-6 flex items-center justify-center gap-2">
                         <Eye className="w-3.5 h-3.5" /> Call it before the machine
                       </div>
                       <div className="font-display text-3xl text-foreground mb-8">
@@ -322,7 +322,7 @@ export default function ReplayPage() {
                     >
                       <div className="absolute top-0 left-0 w-1/2 h-[1px] bg-gradient-to-r from-amber/50 to-transparent" />
                       {guess !== null && (
-                        <div className={`font-mono text-[10px] tracking-[0.3em] uppercase mb-4 ${guess === print.replay.verdict ? 'text-olive' : 'text-coral'}`}>
+                        <div className={`font-mono text-xs tracking-[0.3em] uppercase mb-4 ${guess === print.replay.verdict ? 'text-olive' : 'text-coral'}`}>
                           {guess === print.replay.verdict ? '◆ You matched the machine' : `◇ You said ${guess === 'NEUTRAL' ? 'STAND DOWN' : guess} — machine disagrees`}
                         </div>
                       )}
@@ -337,7 +337,7 @@ export default function ReplayPage() {
                         )}
                       </div>
                       <p className="font-sans text-muted leading-relaxed mb-8 max-w-2xl">{print.replay.explanation}</p>
-                      <div className="flex flex-wrap gap-8 font-mono text-[10px] tracking-widest uppercase">
+                      <div className="flex flex-wrap gap-8 font-mono text-xs tracking-widest uppercase">
                         <span className="text-muted">Analogs used: <span className="text-foreground">{print.replay.analogCount}</span></span>
                         {print.replay.analogHitRate !== null && (
                           <span className="text-muted">Analog hit rate: <span className="text-foreground">{print.replay.analogHitRate}%</span></span>
@@ -356,7 +356,7 @@ export default function ReplayPage() {
               {/* ── Right: what actually happened + equity ── */}
               <div className="space-y-8">
                 <div className="mara-glass p-6">
-                  <div className="font-mono text-[10px] tracking-[0.3em] text-muted uppercase mb-6">What BTC actually did</div>
+                  <div className="font-mono text-xs tracking-[0.3em] text-muted uppercase mb-6">What BTC actually did</div>
                   <div className="space-y-5">
                     {retMeter('+1 day', print.btcRet.d1)}
                     {retMeter('+3 days', print.btcRet.d3)}
@@ -364,14 +364,14 @@ export default function ReplayPage() {
                     {retMeter('+30 days', print.btcRet.d30)}
                   </div>
                   {print.regime && (
-                    <div className="font-mono text-[9px] text-muted tracking-widest uppercase mt-6 pt-4 border-t border-glass-border">
+                    <div className="font-mono text-[11px] text-muted tracking-widest uppercase mt-6 pt-4 border-t border-glass-border">
                       Regime that day: <span className="text-foreground">{print.regime}</span>
                     </div>
                   )}
                 </div>
 
                 <div className="mara-glass p-6">
-                  <div className="font-mono text-[10px] tracking-[0.3em] text-muted uppercase mb-2">Strategy equity · cumulative</div>
+                  <div className="font-mono text-xs tracking-[0.3em] text-muted uppercase mb-2">Strategy equity · cumulative</div>
                   <div className={`font-mono text-3xl font-light mb-4 ${print.cumulativePnlPct >= 0 ? 'text-olive' : 'text-coral'}`}>
                     {print.cumulativePnlPct >= 0 ? '+' : ''}{print.cumulativePnlPct.toFixed(2)}%
                   </div>
@@ -384,7 +384,7 @@ export default function ReplayPage() {
                 </div>
 
                 <div className="border border-glass-border p-6 font-sans text-[11px] text-muted leading-relaxed">
-                  <span className="text-foreground font-mono text-[9px] tracking-[0.3em] uppercase block mb-2">Method — honest by construction</span>
+                  <span className="text-foreground font-mono text-[11px] tracking-[0.3em] uppercase block mb-2">Method — honest by construction</span>
                   {timeline.method ??
                     'Each print is decided using only analogs dated strictly before it. Fewer than 3 analogs → the agent stands down rather than guess. P&L uses real next-day BTC returns scaled by the regime size multiplier.'}
                 </div>

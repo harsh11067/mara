@@ -126,9 +126,19 @@ export interface BackendRisk {
   };
 }
 
+export interface KillState {
+  active: boolean;
+  reason: string | null;
+  activatedAt: number | null;
+  ordersCancelled: boolean;
+  positionsClosed: number;
+  lastResetAt: number | null;
+}
+
 export interface BackendStatus {
   running: boolean;
   killSwitch: boolean;
+  killState?: KillState;
   uptime: number;
 }
 
@@ -222,6 +232,7 @@ export const api = {
 
   killSwitch:      () => postJson<{ ok?: boolean; error?: string }>('/api/kill-switch'),
   resetKillSwitch: () => postJson<{ ok?: boolean; error?: string }>('/api/kill-switch/reset'),
+  attestation:     () => fetchJson<Record<string, unknown>>('/api/attestation'),
 };
 
 // ── Accounts / credits ───────────────────────────────────────────────────────
@@ -242,9 +253,9 @@ export interface SessionPayload {
 
 export const authApi = {
   guest:  (name?: string) => postJson<SessionPayload>('/api/auth/guest', name ? { name } : {}),
-  google: (credential: string) => postJson<SessionPayload>('/api/auth/google', { credential }),
+  google: (credential: string, ref?: string) => postJson<SessionPayload>('/api/auth/google', { credential, ref }),
   walletNonce:  (address: string) => postJson<{ address: string; nonce: string; message: string; error?: string }>('/api/auth/wallet/nonce', { address }),
-  walletVerify: (address: string, signature: string) => postJson<SessionPayload>('/api/auth/wallet/verify', { address, signature }),
+  walletVerify: (address: string, signature: string, ref?: string) => postJson<SessionPayload>('/api/auth/wallet/verify', { address, signature, ref }),
   me:     () => fetchJson<SessionPayload & { ledger: Array<{ delta: number; reason: string; ref: string | null; created_at: number }> }>('/api/auth/me'),
   logout: () => postJson<{ ok: boolean }>('/api/auth/logout'),
 };
@@ -357,6 +368,7 @@ export interface BackendAccount {
     orders: Array<{ orderId?: string | number; clOrdID?: string; symbol?: string; side?: string | number; type?: string | number; price?: string; quantity?: string; status?: string | number; createdAt?: number; [k: string]: unknown }>;
   };
   spot: Array<{ asset?: string; symbol?: string; currency?: string; free?: string; available?: string; balance?: string; locked?: string; [k: string]: unknown }>;
+  evm?: { chainId: number; rpc: string | null; sosoNative: number | null };
   fetchedAt: number;
   error?: string;
 }
@@ -392,10 +404,67 @@ export interface BackendBacktest {
   generatedAt: number;
 }
 
+export interface BackendKlines {
+  symbol: string;
+  interval: string;
+  candles: Array<{ t: number; o: number; h: number; l: number; c: number; v: number }>;
+  fetchedAt: number;
+}
+
 export const portfolioApi = {
   account: () => fetchJson<BackendAccount>('/api/account'),
   etf: (symbol: 'BTC' | 'ETH') => fetchJson<BackendEtfFlows>(`/api/etf?symbol=${symbol}`),
   backtest: () => fetchJson<BackendBacktest>('/api/backtest'),
+  klines: (symbol: string, interval = '1h', limit = 48) =>
+    fetchJson<BackendKlines>(`/api/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`),
+  indices: () => fetchJson<{ indices: Array<Record<string, unknown>>; fetchedAt: number }>('/api/indices'),
+  treasuries: () => fetchJson<{ treasuries: Array<Record<string, unknown>>; fetchedAt: number }>('/api/treasuries'),
+};
+
+// ── Arcade (Wave 6) ──────────────────────────────────────────────────────────
+
+export interface ArcadeGame {
+  key: 'PULSE' | 'OVERUNDER';
+  title: string;
+  tagline: string;
+  picks: string[];
+  durationSec: number;
+  payoutX: number;
+  threshold: number | null;
+}
+
+export interface ArcadeBet {
+  id: string; game: string; pick: string; stake: number;
+  symbol: string; strike: number; threshold: number | null;
+  resolve_at: number; settle_price: number | null;
+  outcome: 'PENDING' | 'WIN' | 'LOSS' | 'VOID'; payout: number;
+  source: string; created_at: number; resolved_at: number | null;
+}
+
+export const arcadeApi = {
+  config: () => fetchJson<{ games: ArcadeGame[]; minStake: number; maxStake: number; stats: { totalBets: number; resolved: number; paidOut: number }; note: string }>('/api/arcade'),
+  bet: (params: { game: string; pick: string; stake: number }) =>
+    postJson<{ ok?: boolean; betId?: string; strike?: number; resolveAt?: number; credits?: number; error?: string }>('/api/arcade/bet', params),
+  mine: () => fetchJson<{ bets: ArcadeBet[] }>('/api/arcade/mine'),
+};
+
+// ── Concierge chat (Wave 6) ──────────────────────────────────────────────────
+
+export const chatApi = {
+  quota: () => fetchJson<{ used: number; quota: number; unlock: { cost: number; adds: number }; credits: number }>('/api/chat/quota'),
+  send: (message: string) =>
+    postJson<{ reply?: string; used?: number; quota?: number; credits?: number; error?: string; premium?: { cost: number; adds: number; credits: number } }>('/api/chat', { message }),
+  unlock: () => postJson<{ ok?: boolean; used?: number; quota?: number; credits?: number; error?: string }>('/api/chat/unlock'),
+};
+
+// ── Community: feedback, The Floor, referrals (Wave 6) ───────────────────────
+
+export const communityApi = {
+  feedback: (params: { email: string; category: string; subject?: string; description: string; page?: string }) =>
+    postJson<{ ok?: boolean; message?: string; error?: string }>('/api/feedback', params),
+  comments: () => fetchJson<{ comments: Array<{ id: string; name: string; body: string; created_at: number }> }>('/api/comments'),
+  postComment: (body: string) => postJson<{ ok?: boolean; error?: string }>('/api/comments', { body }),
+  referral: () => fetchJson<{ code: string; link: string; bonus: number; joined: number; earned: number; error?: string }>('/api/referral'),
 };
 
 // ── WebSocket ────────────────────────────────────────────────────────────────
@@ -408,6 +477,7 @@ export type WsMessage =
   | { type: 'event_fired'; data: BackendEvent }
   | { type: 'agent_trace'; data: AgentTraceStep }
   | { type: 'duel_result'; data: { duelId: string; outcome: string; payout: number; verdict: string | null; confidence: number | null; credits: number; userId: string } }
+  | { type: 'arcade_result'; data: { betId: string; userId: string; game: string; pick: string; stake: number; strike: number; settle: number; movePct: number; outcome: string; payout: number; credits: number } }
   | { type: 'status';      data: { killSwitch: boolean; reason?: string } };
 
 export function createWebSocket(onMessage: (msg: WsMessage) => void, onConnect?: () => void, onClose?: () => void): () => void {

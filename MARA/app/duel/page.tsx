@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Swords, TrendingUp, TrendingDown, Trophy, Flame, ChevronRight, HelpCircle } from 'lucide-react';
 import { AccountMenu } from '@/components/AccountMenu';
 import { openOnboarding } from '@/components/Onboarding';
+import { Arcade } from '@/components/Arcade';
+import { TheFloor } from '@/components/TheFloor';
 import {
   api, duelApi, createWebSocket, timeAgo,
   type BackendEvent, type DuelRow, type LeaderboardRow, type WsMessage,
@@ -162,7 +164,7 @@ export default function DuelPage() {
       <header className="fixed top-0 w-full px-8 md:px-12 py-6 flex justify-between items-center z-50 bg-background/70 backdrop-blur-md border-b border-foreground/5">
         <div className="flex gap-10 items-baseline">
           <Link href="/" className="text-2xl tracking-tight text-foreground hover:text-amber transition-colors font-display italic">MARA</Link>
-          <div className="hidden md:flex gap-8 text-[10px] tracking-[0.2em] text-muted uppercase font-mono">
+          <div className="hidden md:flex gap-8 text-xs tracking-[0.2em] text-muted uppercase font-mono">
             <Link href="/terminal" className="hover:text-foreground transition-colors">Terminal</Link>
             <span className="text-amber border-b border-amber/40 pb-1">Duel</span>
             <Link href="/replay" className="hover:text-foreground transition-colors">Replay</Link>
@@ -181,7 +183,7 @@ export default function DuelPage() {
         {/* Title + player card */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 mb-14">
           <div>
-            <div className="font-mono text-[10px] tracking-[0.4em] text-amber uppercase mb-5 flex items-center gap-3">
+            <div className="font-mono text-xs tracking-[0.4em] text-amber uppercase mb-5 flex items-center gap-3">
               <Swords className="w-3.5 h-3.5" /> The Arena
             </div>
             <h1 className="font-display text-6xl md:text-8xl leading-[0.9] tracking-tight">
@@ -199,17 +201,17 @@ export default function DuelPage() {
             <div className="absolute top-0 left-0 w-1/2 h-[1px] bg-gradient-to-r from-amber/60 to-transparent" />
             <div className="flex justify-between items-start mb-4">
               <div>
-                <div className="font-mono text-[9px] tracking-[0.3em] text-muted uppercase mb-1">Rank</div>
+                <div className="font-mono text-[11px] tracking-[0.3em] text-muted uppercase mb-1">Rank</div>
                 <div className="font-display text-2xl text-foreground">{rank.title}</div>
               </div>
               <div className="text-right">
-                <div className="font-mono text-[9px] tracking-[0.3em] text-muted uppercase mb-1">Streak</div>
+                <div className="font-mono text-[11px] tracking-[0.3em] text-muted uppercase mb-1">Streak</div>
                 <div className={`font-mono text-2xl font-light flex items-center gap-1.5 justify-end ${record.streak > 0 ? 'text-amber' : 'text-muted'}`}>
                   {record.streak > 0 && <Flame className="w-4 h-4" />}{record.streak}
                 </div>
               </div>
             </div>
-            <div className="flex justify-between font-mono text-[10px] tracking-widest text-muted uppercase mb-2">
+            <div className="flex justify-between font-mono text-xs tracking-widest text-muted uppercase mb-2">
               <span>W {record.wins} · L {record.losses} · P {record.pushes}</span>
               <span>{nextRank ? `${nextRank.wins - record.wins} wins → ${nextRank.title}` : 'MAX RANK'}</span>
             </div>
@@ -224,7 +226,7 @@ export default function DuelPage() {
         </div>
 
         {/* Beginner direction strip */}
-        <div className="flex flex-wrap items-center gap-3 mb-12 font-mono text-[10px] tracking-[0.2em] uppercase">
+        <div className="flex flex-wrap items-center gap-3 mb-12 font-mono text-xs tracking-[0.2em] uppercase">
           {STEPS.map((s, i) => (
             <div key={s} className="flex items-center gap-3">
               <span className={`px-4 py-2 border transition-colors ${i === currentStep ? 'border-amber/50 text-amber bg-amber/5' : i < currentStep ? 'border-glass-border text-foreground/60 line-through decoration-amber/40' : 'border-glass-border text-muted'}`}>
@@ -318,7 +320,7 @@ export default function DuelPage() {
 
                   {!signedIn && (
                     <div className="border border-amber/30 bg-amber/5 p-8 relative overflow-hidden">
-                      <div className="font-mono text-[10px] tracking-[0.3em] text-amber uppercase mb-3">Step 01 — Identity required</div>
+                      <div className="font-mono text-xs tracking-[0.3em] text-amber uppercase mb-3">Step 01 — Identity required</div>
                       <p className="font-sans text-foreground text-lg font-light leading-relaxed">
                         Use <span className="font-mono text-sm border border-glass-border px-2 py-0.5">CONNECT</span> (top right) and sign in
                         with Google or a wallet signature. Real logins receive <span className="text-amber">1,000 credits</span> to stake.
@@ -327,7 +329,7 @@ export default function DuelPage() {
                   )}
                   {signedIn && !hasCredits && (
                     <div className="border border-amber/30 bg-amber/5 p-8">
-                      <div className="font-mono text-[10px] tracking-[0.3em] text-amber uppercase mb-3">Credits required</div>
+                      <div className="font-mono text-xs tracking-[0.3em] text-amber uppercase mb-3">Credits required</div>
                       <p className="font-sans text-foreground text-lg font-light leading-relaxed">
                         {session.user?.provider === 'guest'
                           ? 'Guest passes hold no credits. Reconnect with Google or a wallet to receive 1,000 credits.'
@@ -338,13 +340,13 @@ export default function DuelPage() {
 
                   {/* Event selection */}
                   <div className="border border-glass-border bg-background/60 backdrop-blur-xl p-8">
-                    <div className="font-mono text-[10px] tracking-[0.3em] text-muted uppercase mb-6">Step 02 — The print</div>
+                    <div className="font-mono text-xs tracking-[0.3em] text-muted uppercase mb-6">Step 02 — The print</div>
                     <div className="flex flex-wrap gap-2 mb-6">
                       {PRESETS.map((p) => (
                         <button
                           key={p.event}
                           onClick={() => { setEventName(p.event); setActual(String(p.actual)); setForecast(String(p.forecast)); }}
-                          className={`px-4 py-2 border font-mono text-[10px] tracking-wider uppercase transition-colors ${eventName === p.event ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground hover:border-foreground/30'}`}
+                          className={`px-4 py-2 border font-mono text-xs tracking-wider uppercase transition-colors ${eventName === p.event ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground hover:border-foreground/30'}`}
                         >
                           {p.event} · {p.note}
                         </button>
@@ -353,7 +355,7 @@ export default function DuelPage() {
                         <button
                           key={e.id}
                           onClick={() => { setEventName(e.name); setForecast(String(e.forecast)); setActual(String(e.actual ?? e.forecast)); }}
-                          className={`px-4 py-2 border font-mono text-[10px] tracking-wider uppercase transition-colors ${eventName === e.name ? 'border-amber/50 text-amber bg-amber/5' : 'border-dashed border-glass-border text-muted hover:text-foreground'}`}
+                          className={`px-4 py-2 border font-mono text-xs tracking-wider uppercase transition-colors ${eventName === e.name ? 'border-amber/50 text-amber bg-amber/5' : 'border-dashed border-glass-border text-muted hover:text-foreground'}`}
                         >
                           {e.name} · calendar
                         </button>
@@ -361,17 +363,17 @@ export default function DuelPage() {
                     </div>
                     <div className="grid md:grid-cols-3 gap-4">
                       <div className="md:col-span-1">
-                        <label className="font-mono text-[9px] text-muted tracking-widest uppercase mb-2 block">Event</label>
+                        <label className="font-mono text-[11px] text-muted tracking-widest uppercase mb-2 block">Event</label>
                         <input value={eventName} onChange={(e) => setEventName(e.target.value)}
                           className="w-full bg-foreground/[0.02] border border-glass-border px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-amber/50" />
                       </div>
                       <div>
-                        <label className="font-mono text-[9px] text-muted tracking-widest uppercase mb-2 block">Actual (printed)</label>
+                        <label className="font-mono text-[11px] text-muted tracking-widest uppercase mb-2 block">Actual (printed)</label>
                         <input value={actual} onChange={(e) => setActual(e.target.value)}
                           className="w-full bg-foreground/[0.02] border border-glass-border px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-amber/50" />
                       </div>
                       <div>
-                        <label className="font-mono text-[9px] text-muted tracking-widest uppercase mb-2 block">Forecast (expected)</label>
+                        <label className="font-mono text-[11px] text-muted tracking-widest uppercase mb-2 block">Forecast (expected)</label>
                         <input value={forecast} onChange={(e) => setForecast(e.target.value)}
                           className="w-full bg-foreground/[0.02] border border-glass-border px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-amber/50" />
                       </div>
@@ -386,7 +388,7 @@ export default function DuelPage() {
                       className={`text-left border p-10 relative overflow-hidden group transition-colors duration-500 ${prediction === 'BULL' ? 'border-olive bg-olive/10' : 'border-glass-border bg-background hover:border-olive/40'}`}
                     >
                       <TrendingUp className={`w-32 h-32 absolute -right-6 -bottom-6 transition-colors ${prediction === 'BULL' ? 'text-olive/20' : 'text-muted/[0.06] group-hover:text-olive/10'}`} strokeWidth={0.75} />
-                      <div className={`font-mono text-[10px] tracking-[0.3em] uppercase mb-4 ${prediction === 'BULL' ? 'text-olive' : 'text-muted'}`}>Crypto rips</div>
+                      <div className={`font-mono text-xs tracking-[0.3em] uppercase mb-4 ${prediction === 'BULL' ? 'text-olive' : 'text-muted'}`}>Crypto rips</div>
                       <div className="font-display text-5xl mb-3">BULL</div>
                       <p className="font-sans text-sm text-muted leading-relaxed max-w-[240px]">
                         This print is risk-on — you expect MARA to call BULL or STRONG BULL.
@@ -403,7 +405,7 @@ export default function DuelPage() {
                       className={`text-left border p-10 relative overflow-hidden group transition-colors duration-500 ${prediction === 'BEAR' ? 'border-coral bg-coral/10' : 'border-glass-border bg-background hover:border-coral/40'}`}
                     >
                       <TrendingDown className={`w-32 h-32 absolute -right-6 -bottom-6 transition-colors ${prediction === 'BEAR' ? 'text-coral/20' : 'text-muted/[0.06] group-hover:text-coral/10'}`} strokeWidth={0.75} />
-                      <div className={`font-mono text-[10px] tracking-[0.3em] uppercase mb-4 ${prediction === 'BEAR' ? 'text-coral' : 'text-muted'}`}>Crypto bleeds</div>
+                      <div className={`font-mono text-xs tracking-[0.3em] uppercase mb-4 ${prediction === 'BEAR' ? 'text-coral' : 'text-muted'}`}>Crypto bleeds</div>
                       <div className="font-display text-5xl mb-3">BEAR</div>
                       <p className="font-sans text-sm text-muted leading-relaxed max-w-[240px]">
                         This print is risk-off — you expect MARA to call BEAR or STRONG BEAR.
@@ -414,7 +416,7 @@ export default function DuelPage() {
                   {/* Stake + launch */}
                   <div className="border border-glass-border bg-background/60 backdrop-blur-xl p-8 flex flex-col md:flex-row md:items-end gap-8">
                     <div className="flex-1">
-                      <div className="flex justify-between font-mono text-[10px] tracking-[0.2em] uppercase mb-3">
+                      <div className="flex justify-between font-mono text-xs tracking-[0.2em] uppercase mb-3">
                         <span className="text-muted">Step 03 — Stake</span>
                         <span className="text-amber">{stake} CR{prediction ? ` on ${prediction}` : ''} → win {stake * 2}</span>
                       </div>
@@ -423,7 +425,7 @@ export default function DuelPage() {
                         onChange={(e) => setStake(parseInt(e.target.value, 10))}
                         className="w-full accent-[#FFB347]"
                       />
-                      <div className="flex justify-between font-mono text-[9px] text-muted mt-1">
+                      <div className="flex justify-between font-mono text-[11px] text-muted mt-1">
                         <span>25 min</span>
                         <span>balance {session.credits.toLocaleString()}</span>
                         <span>500 max</span>
@@ -447,11 +449,11 @@ export default function DuelPage() {
           {/* ── Right rail: leaderboard + my duels ── */}
           <div className="space-y-8">
             <div className="mara-glass p-6">
-              <div className="font-mono text-[10px] tracking-[0.3em] text-muted uppercase mb-5 flex items-center gap-2">
+              <div className="font-mono text-xs tracking-[0.3em] text-muted uppercase mb-5 flex items-center gap-2">
                 <Trophy className="w-3.5 h-3.5 text-amber" /> Leaderboard · vs the agent
               </div>
               {board.length === 0 ? (
-                <div className="font-sans text-xs text-muted">No duels fought yet. Be the first name here.</div>
+                <div className="font-sans text-sm text-muted">No duels fought yet. Be the first name here.</div>
               ) : (
                 <div className="space-y-2">
                   {board.slice(0, 8).map((r) => (
@@ -469,15 +471,15 @@ export default function DuelPage() {
             </div>
 
             <div className="mara-glass p-6">
-              <div className="font-mono text-[10px] tracking-[0.3em] text-muted uppercase mb-5">My duels</div>
+              <div className="font-mono text-xs tracking-[0.3em] text-muted uppercase mb-5">My duels</div>
               {!signedIn ? (
-                <div className="font-sans text-xs text-muted">Connect to start your record.</div>
+                <div className="font-sans text-sm text-muted">Connect to start your record.</div>
               ) : mine.length === 0 ? (
-                <div className="font-sans text-xs text-muted">No duels yet — your first verdict awaits.</div>
+                <div className="font-sans text-sm text-muted">No duels yet — your first verdict awaits.</div>
               ) : (
                 <div className="space-y-2">
                   {mine.slice(0, 8).map((d) => (
-                    <div key={d.id} className="flex items-center gap-3 font-mono text-[10px] py-1.5 border-b border-glass-border/40 last:border-0">
+                    <div key={d.id} className="flex items-center gap-3 font-mono text-xs py-1.5 border-b border-glass-border/40 last:border-0">
                       <span className={`w-12 tracking-wider ${d.outcome === 'WIN' ? 'text-olive' : d.outcome === 'LOSS' ? 'text-coral' : d.outcome === 'PENDING' ? 'text-amber animate-pulse' : 'text-muted'}`}>
                         {d.outcome}
                       </span>
@@ -492,12 +494,16 @@ export default function DuelPage() {
             </div>
 
             <div className="border border-glass-border p-6 font-sans text-[11px] text-muted leading-relaxed">
-              <span className="text-foreground font-mono text-[9px] tracking-[0.3em] uppercase block mb-2">House rules</span>
+              <span className="text-foreground font-mono text-[11px] tracking-[0.3em] uppercase block mb-2">House rules</span>
               Stakes 25–500 CR · win pays 2× · NEUTRAL verdict = push (full refund) ·
               pipeline failure = automatic refund · one duel per 20s globally (shared cooldown with live runs).
             </div>
           </div>
         </div>
+
+        {/* Wave 6: fast credit games on real BTC marks + community board */}
+        <Arcade />
+        <TheFloor />
       </main>
     </div>
   );

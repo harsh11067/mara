@@ -12,22 +12,12 @@ import {
   type BackendTrade, type BackendRisk, type BackendMarkets, type BackendNewsItem,
   type BackendDiag, type BackendDecision, type BackendPerformanceSummary,
   type BackendAccount, type BackendEtfFlows, type BackendBacktest,
+  type BackendKlines, type BackendStatus,
 } from '@/lib/api';
 
-type DeskTab = 'positions' | 'exchange' | 'etf' | 'quant';
+type DeskTab = 'positions' | 'exchange' | 'charts' | 'etf' | 'quant';
 
 interface LogRow { id: string; time: string; tag: string; text: string; tone: 'bull' | 'bear' | 'flat' }
-
-/** Deterministic sparkline path per symbol — decorative texture, not data. */
-function sparkPath(seedStr: string): string {
-  let seed = 0;
-  for (const ch of seedStr) seed = (seed * 31 + ch.charCodeAt(0)) % 997;
-  const pts = [...Array(6)].map((_, i) => {
-    seed = (seed * 137 + 71) % 997;
-    return `${i * 20},${4 + (seed % 14)}`;
-  });
-  return `M${pts.join(' L')}`;
-}
 
 export default function PortfolioPage() {
   const { volatility, marketTrend, regime } = useEnvironment();
@@ -52,6 +42,13 @@ export default function PortfolioPage() {
   const [etfEth, setEtfEth] = useState<BackendEtfFlows | null>(null);
   const [etfSymbol, setEtfSymbol] = useState<'BTC' | 'ETH'>('BTC');
   const [backtest, setBacktest] = useState<BackendBacktest | null>(null);
+  const [trails, setTrails] = useState<Record<string, number[]>>({});
+  const [chartSymbol, setChartSymbol] = useState('BTC-USD');
+  const [chartInterval, setChartInterval] = useState<'15m' | '1h' | '4h' | '1d'>('1h');
+  const [chart, setChart] = useState<BackendKlines | null>(null);
+  const [indices, setIndices] = useState<Array<Record<string, unknown>>>([]);
+  const [treasuries, setTreasuries] = useState<Array<Record<string, unknown>>>([]);
+  const [status, setStatus] = useState<BackendStatus | null>(null);
 
   // Fire Live Run form
   const [runEvent, setRunEvent] = useState('CPI YoY');
@@ -93,6 +90,15 @@ export default function PortfolioPage() {
     void portfolioApi.etf('BTC').then(setEtfBtc).catch(() => {});
     void portfolioApi.etf('ETH').then(setEtfEth).catch(() => {});
     void portfolioApi.backtest().then(setBacktest).catch(() => {});
+    void api.status().then(setStatus).catch(() => {});
+    void portfolioApi.indices().then((r) => setIndices(r.indices)).catch(() => {});
+    void portfolioApi.treasuries().then((r) => setTreasuries(r.treasuries)).catch(() => {});
+    // Real 24h price trails for the ticker cards (1h closes — actual data, not texture)
+    for (const sym of ['BTC-USD', 'ETH-USD', 'SOL-USD']) {
+      void portfolioApi.klines(sym, '1h', 24)
+        .then((k) => setTrails((t) => ({ ...t, [sym]: k.candles.map((c) => c.c) })))
+        .catch(() => {});
+    }
     void api.decisions().then((ds) => {
       if (ds.length) {
         setLatestDecision(ds[0]);
@@ -159,6 +165,26 @@ export default function PortfolioPage() {
     if (risk.killSwitchActive) await api.resetKillSwitch();
     else await api.killSwitch();
     void api.risk().then(setRisk).catch(() => {});
+    void api.status().then(setStatus).catch(() => {});
+  };
+
+  // Chart tab data
+  useEffect(() => {
+    if (deskTab !== 'charts') return;
+    setChart(null);
+    void portfolioApi.klines(chartSymbol, chartInterval, 96).then(setChart).catch(() => {});
+  }, [deskTab, chartSymbol, chartInterval]);
+
+  /** SVG path from real closes — used for ticker trails and the chart line. */
+  const lineFromCloses = (closes: number[], w = 100, h = 20, pad = 2): string | null => {
+    if (closes.length < 2) return null;
+    const min = Math.min(...closes), max = Math.max(...closes);
+    const range = max - min || 1;
+    return closes.map((v, i) => {
+      const x = (i / (closes.length - 1)) * w;
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(' ');
   };
 
   const sortedTrades = [...trades].sort((a, b) => {
@@ -210,7 +236,7 @@ export default function PortfolioPage() {
 
       {/* Top Header */}
       <header className="h-12 border-b border-glass-border flex items-center px-4 justify-between bg-[#090807] shrink-0 z-50 shadow-md">
-        <div className="flex items-center gap-6 text-[10px] tracking-widest text-muted uppercase">
+        <div className="flex items-center gap-6 text-xs tracking-widest text-muted uppercase">
           <Link href="/" className="hover:text-amber transition-colors flex items-center gap-2">
             <span className="w-2 h-2 bg-foreground rounded-sm inline-block" />
             SYS_MENU
@@ -224,7 +250,7 @@ export default function PortfolioPage() {
             REGIME: {regime ? regime.regime.replace('_', ' ') : 'SYNCING'}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-[10px] tracking-widest text-muted">
+        <div className="flex items-center gap-4 text-xs tracking-widest text-muted">
           <Link href="/duel" className="text-amber hover:text-foreground transition-colors uppercase">Duel</Link>
           <Link href="/replay" className="hover:text-foreground transition-colors uppercase">Replay</Link>
           <Link href="/edge" className="hover:text-foreground transition-colors uppercase">Edge</Link>
@@ -240,8 +266,8 @@ export default function PortfolioPage() {
         {/* Left Sidebar */}
         <aside className="w-64 flex flex-col gap-2 shrink-0">
           <div className="mara-glass p-4 flex-1 overflow-y-auto">
-            <div className="text-[9px] text-muted tracking-widest uppercase mb-4 border-b border-glass-border pb-2">Desks</div>
-            <ul className="space-y-1 text-xs">
+            <div className="text-[11px] text-muted tracking-widest uppercase mb-4 border-b border-glass-border pb-2">Desks</div>
+            <ul className="space-y-1 text-sm">
               {[
                 { label: 'Portfolio (this desk)', href: '/portfolio', active: true },
                 { label: 'Cognition Terminal', href: '/terminal', active: false },
@@ -257,14 +283,14 @@ export default function PortfolioPage() {
               ))}
             </ul>
 
-            <div className="text-[9px] text-muted tracking-widest uppercase mt-8 mb-4 border-b border-glass-border pb-2">Data Plane · Live Probes</div>
+            <div className="text-[11px] text-muted tracking-widest uppercase mt-8 mb-4 border-b border-glass-border pb-2">Data Plane · Live Probes</div>
             <div className="space-y-4">
               {diagChecks.length === 0 && (
-                <div className="text-[10px] text-muted">probing…</div>
+                <div className="text-xs text-muted">probing…</div>
               )}
               {diagChecks.map((c) => (
                 <div key={c.name}>
-                  <div className="flex justify-between text-[10px] mb-1">
+                  <div className="flex justify-between text-xs mb-1">
                     <span className="text-muted uppercase">{c.name}</span>
                     <span className={c.ok ? 'text-foreground' : 'text-coral'}>
                       {c.ok ? `${c.latencyMs ?? '—'}ms` : 'DOWN'}
@@ -281,10 +307,10 @@ export default function PortfolioPage() {
             </div>
 
             {/* Kill switch — the real one */}
-            <div className="text-[9px] text-muted tracking-widest uppercase mt-8 mb-4 border-b border-glass-border pb-2">Master Control</div>
+            <div className="text-[11px] text-muted tracking-widest uppercase mt-8 mb-4 border-b border-glass-border pb-2">Master Control</div>
             <button
               onClick={() => void toggleKill()}
-              className={`w-full flex items-center justify-center gap-2 border py-2.5 text-[10px] tracking-[0.2em] uppercase transition-colors ${
+              className={`w-full flex items-center justify-center gap-2 border py-2.5 text-xs tracking-[0.2em] uppercase transition-colors ${
                 risk?.killSwitchActive
                   ? 'border-coral/40 text-coral hover:bg-coral/10'
                   : 'border-glass-border text-muted hover:text-coral hover:border-coral/40'
@@ -293,14 +319,35 @@ export default function PortfolioPage() {
               {risk?.killSwitchActive ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
               {risk?.killSwitchActive ? 'KILL ACTIVE — RESET' : 'KILL SWITCH'}
             </button>
+            <p className="text-[11px] text-muted font-sans leading-relaxed mt-2">
+              {risk?.killSwitchActive
+                ? (status?.killState?.reason ? `Why: ${status.killState.reason}` : 'Engine halted.')
+                : 'One press: cancels every SoDEX order, market-closes positions, halts trading, duels and arcade — and broadcasts it to Telegram. Auto-fires at max drawdown.'}
+            </p>
           </div>
 
           <div className="mara-glass p-4 shrink-0 bg-background/40">
-             <div className="text-[9px] text-muted tracking-widest uppercase mb-2">Account (SoDEX testnet)</div>
+             <div className="text-[11px] text-muted tracking-widest uppercase mb-2">Operator Wallet · live reads</div>
+             {/* Native SOSO on ValueChain — exactly what MetaMask shows (eth_getBalance) */}
              <div className="text-2xl text-foreground font-light tracking-tight">
-               {risk ? `$${(risk.liveBalance ?? risk.accountBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
+               {account?.evm?.sosoNative != null
+                 ? <>{account.evm.sosoNative.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-sm text-amber">SOSO</span></>
+                 : '—'}
              </div>
-             <div className={`text-xs mt-1 flex items-center gap-1 ${risk && risk.cumulativePnl >= 0 ? 'text-olive' : 'text-coral'}`}>
+             <div className="text-[11px] text-muted mt-0.5">native gas · ValueChain (eth_getBalance)</div>
+             <div className="mt-3 space-y-1.5 text-[11px] font-mono">
+               <div className="flex justify-between">
+                 <span className="text-muted uppercase">Perps USDC</span>
+                 <span className="text-foreground">{account?.perps.availableBalance != null ? `$${account.perps.availableBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : (risk ? `$${(risk.liveBalance ?? risk.accountBalance).toFixed(2)}` : '—')}</span>
+               </div>
+               {(account?.spot ?? []).slice(0, 3).map((s, i) => (
+                 <div key={i} className="flex justify-between">
+                   <span className="text-muted uppercase">{String(s.asset ?? '?')}</span>
+                   <span className="text-foreground">{Number(s.free ?? 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+                 </div>
+               ))}
+             </div>
+             <div className={`text-sm mt-2 flex items-center gap-1 ${risk && risk.cumulativePnl >= 0 ? 'text-olive' : 'text-coral'}`}>
                <ArrowUpRight className="w-3 h-3"/>
                {risk ? `${risk.cumulativePnl >= 0 ? '+' : ''}${risk.cumulativePnl.toFixed(2)} cumulative P&L` : 'syncing'}
              </div>
@@ -309,22 +356,34 @@ export default function PortfolioPage() {
 
         {/* Center */}
         <section className="flex-1 flex flex-col gap-2 min-w-0 relative">
+          {/* SAFE MODE — the kill switch is a state the whole desk lives in */}
+          {(risk?.killSwitchActive || status?.killState?.active) && (
+            <div className="border border-coral/50 bg-coral/10 px-4 py-2.5 flex flex-wrap items-center gap-x-6 gap-y-1 shrink-0">
+              <span className="text-sm tracking-[0.3em] uppercase text-coral font-medium animate-pulse">⛔ SAFE MODE</span>
+              <span className="text-[11px] text-foreground/90 font-sans">
+                {status?.killState?.reason ?? 'Kill switch active'} · orders {status?.killState?.ordersCancelled ? 'cancelled' : 'cancelling…'} · {status?.killState?.positionsClosed ?? 0} positions closed
+                {status?.killState?.activatedAt ? ` · since ${new Date(status.killState.activatedAt).toISOString().slice(11, 19)}Z` : ''}
+              </span>
+              <span className="text-[11px] text-muted font-sans">Trading, duels & arcade paused. Reset from Master Control.</span>
+            </div>
+          )}
+
           {/* Real tickers */}
           <div className="flex gap-2 h-32 shrink-0">
             {(tickers.length > 0 ? tickers : [null, null, null, null]).map((t, i) => (
               <div key={t?.symbol ?? i} className="flex-1 mara-glass p-4 flex flex-col justify-between relative overflow-hidden group">
-                <div className="text-[10px] text-muted tracking-widest uppercase">{t?.symbol ?? '—'}</div>
+                <div className="text-xs text-muted tracking-widest uppercase">{t?.symbol ?? '—'}</div>
                 <div>
                   <div className="text-xl text-foreground tracking-tight">
                     {t ? t.price.toLocaleString(undefined, { maximumFractionDigits: t.price > 100 ? 0 : 2 }) : '—'}
                   </div>
-                  <div className={`text-xs mt-1 ${t && (t.changePct ?? 0) >= 0 ? 'text-olive' : 'text-coral'}`}>
+                  <div className={`text-sm mt-1 ${t && (t.changePct ?? 0) >= 0 ? 'text-olive' : 'text-coral'}`}>
                     {t && t.changePct !== null ? `${t.changePct >= 0 ? '+' : ''}${t.changePct.toFixed(2)}%` : ''}
                   </div>
                 </div>
-                {t && (
-                  <svg className="absolute bottom-0 left-0 w-full h-12 opacity-30 group-hover:opacity-60 transition-opacity" preserveAspectRatio="none" viewBox="0 0 100 20">
-                    <path d={sparkPath(t.symbol)} fill="none" stroke="currentColor" strokeWidth="1" className={(t.changePct ?? 0) >= 0 ? 'text-olive' : 'text-coral'} />
+                {t && trails[t.symbol] && (
+                  <svg className="absolute bottom-0 left-0 w-full h-12 opacity-40 group-hover:opacity-70 transition-opacity" preserveAspectRatio="none" viewBox="0 0 100 20">
+                    <path d={lineFromCloses(trails[t.symbol]) ?? ''} fill="none" stroke="currentColor" strokeWidth="1" className={(t.changePct ?? 0) >= 0 ? 'text-olive' : 'text-coral'} />
                   </svg>
                 )}
               </div>
@@ -338,13 +397,14 @@ export default function PortfolioPage() {
                  {([
                    ['positions', risk ? `Agent Positions · ${risk.openPositions} open` : 'Agent Positions'],
                    ['exchange', 'Exchange · SoDEX'],
+                   ['charts', 'Charts'],
                    ['etf', 'ETF Flows'],
                    ['quant', 'Quant'],
                  ] as Array<[DeskTab, string]>).map(([tab, label]) => (
                    <button
                      key={tab}
                      onClick={() => setDeskTab(tab)}
-                     className={`text-[10px] tracking-widest uppercase px-3 py-1 transition-colors ${deskTab === tab ? 'text-amber bg-amber/10' : 'text-muted hover:text-foreground'}`}
+                     className={`text-xs tracking-widest uppercase px-3 py-1 transition-colors ${deskTab === tab ? 'text-amber bg-amber/10' : 'text-muted hover:text-foreground'}`}
                    >
                      {label}
                    </button>
@@ -352,7 +412,7 @@ export default function PortfolioPage() {
                </div>
                <button
                  onClick={() => setIsTradeModalOpen(true)}
-                 className="text-[10px] tracking-widest uppercase bg-amber text-background px-3 py-1 rounded-sm hover:bg-amber/80 transition-colors"
+                 className="text-xs tracking-widest uppercase bg-amber text-background px-3 py-1 rounded-sm hover:bg-amber/80 transition-colors"
                >
                  Fire Live Run
                </button>
@@ -362,27 +422,27 @@ export default function PortfolioPage() {
              {deskTab === 'exchange' && (
                <div className="flex-1 overflow-auto p-4 space-y-6">
                  {!account ? (
-                   <div className="text-[10px] text-muted">reading the venue (signed request)…</div>
+                   <div className="text-xs text-muted">reading the venue (signed request)…</div>
                  ) : (
                    <>
                      <div className="flex flex-wrap gap-6 items-baseline">
                        <div>
-                         <div className="text-[9px] text-muted tracking-widest uppercase mb-1">Perps available</div>
+                         <div className="text-[11px] text-muted tracking-widest uppercase mb-1">Perps available</div>
                          <div className="text-2xl font-light text-foreground">
                            {account.perps.availableBalance !== null ? `$${account.perps.availableBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : '—'}
                          </div>
                        </div>
-                       <div className="text-[10px] text-muted tracking-widest uppercase">
+                       <div className="text-xs text-muted tracking-widest uppercase">
                          {account.venue} · operator {account.operator.slice(0, 6)}…{account.operator.slice(-4)}
                        </div>
                      </div>
 
                      <div>
-                       <div className="text-[9px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Open positions on the venue ({account.perps.positions.length})</div>
+                       <div className="text-[11px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Open positions on the venue ({account.perps.positions.length})</div>
                        {account.perps.positions.length === 0 ? (
-                         <div className="text-[10px] text-muted font-sans py-2">Flat on the exchange right now — the honest state of the book.</div>
+                         <div className="text-xs text-muted font-sans py-2">Flat on the exchange right now — the honest state of the book.</div>
                        ) : (
-                         <table className="w-full text-xs text-left border-collapse">
+                         <table className="w-full text-sm text-left border-collapse">
                            <thead><tr className="text-muted border-b border-glass-border/50">
                              <th className="pb-2 font-normal">SYMBOL</th><th className="pb-2 font-normal">SIDE</th>
                              <th className="pb-2 font-normal text-right">QTY</th><th className="pb-2 font-normal text-right">ENTRY</th>
@@ -392,7 +452,7 @@ export default function PortfolioPage() {
                              {account.perps.positions.map((p, i) => (
                                <tr key={`${p.symbol}-${i}`} className="border-b border-glass-border/30">
                                  <td className="py-2 text-foreground">{String(p.symbol ?? '—')}</td>
-                                 <td className={`py-2 text-[10px] ${String(p.positionSide).toUpperCase() === 'SHORT' ? 'text-coral' : 'text-olive'}`}>{String(p.positionSide ?? '—')}</td>
+                                 <td className={`py-2 text-xs ${String(p.positionSide).toUpperCase() === 'SHORT' ? 'text-coral' : 'text-olive'}`}>{String(p.positionSide ?? '—')}</td>
                                  <td className="py-2 text-right text-muted">{String(p.quantity ?? '—')}</td>
                                  <td className="py-2 text-right text-muted">{String(p.entryPrice ?? '—')}</td>
                                  <td className="py-2 text-right text-muted">{String(p.markPrice ?? '—')}</td>
@@ -405,11 +465,11 @@ export default function PortfolioPage() {
                      </div>
 
                      <div>
-                       <div className="text-[9px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Orders on the book ({account.perps.orders.length})</div>
+                       <div className="text-[11px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Orders on the book ({account.perps.orders.length})</div>
                        {account.perps.orders.length === 0 ? (
-                         <div className="text-[10px] text-muted font-sans py-2">No resting orders. Fire a live run and the EIP-712-signed order will appear here, read back from SoDEX itself.</div>
+                         <div className="text-xs text-muted font-sans py-2">No resting orders. Fire a live run and the EIP-712-signed order will appear here, read back from SoDEX itself.</div>
                        ) : (
-                         <table className="w-full text-xs text-left border-collapse">
+                         <table className="w-full text-sm text-left border-collapse">
                            <thead><tr className="text-muted border-b border-glass-border/50">
                              <th className="pb-2 font-normal">ORDER</th><th className="pb-2 font-normal">SYMBOL</th>
                              <th className="pb-2 font-normal text-right">PRICE</th><th className="pb-2 font-normal text-right">QTY</th>
@@ -422,7 +482,7 @@ export default function PortfolioPage() {
                                  <td className="py-2 text-foreground">{String(o.symbol ?? '—')}</td>
                                  <td className="py-2 text-right text-muted">{String(o.price ?? '—')}</td>
                                  <td className="py-2 text-right text-muted">{String(o.quantity ?? '—')}</td>
-                                 <td className="py-2 text-right text-[10px] text-muted">{String(o.status ?? '—')}</td>
+                                 <td className="py-2 text-right text-xs text-muted">{String(o.status ?? '—')}</td>
                                </tr>
                              ))}
                            </tbody>
@@ -432,10 +492,10 @@ export default function PortfolioPage() {
 
                      {account.spot.length > 0 && (
                        <div>
-                         <div className="text-[9px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Spot balances (SSI rotation account)</div>
+                         <div className="text-[11px] text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">Spot balances (SSI rotation account)</div>
                          <div className="flex flex-wrap gap-2">
                            {account.spot.slice(0, 10).map((s, i) => (
-                             <span key={i} className="border border-glass-border px-3 py-1.5 text-[10px] text-foreground">
+                             <span key={i} className="border border-glass-border px-3 py-1.5 text-xs text-foreground">
                                {String(s.asset ?? s.symbol ?? s.currency ?? '?')} <span className="text-muted">{String(s.free ?? s.available ?? s.balance ?? '')}</span>
                              </span>
                            ))}
@@ -443,6 +503,92 @@ export default function PortfolioPage() {
                        </div>
                      )}
                    </>
+                 )}
+               </div>
+             )}
+
+             {/* ── Charts tab: real SoDEX klines + SoSoValue indices/treasuries ── */}
+             {deskTab === 'charts' && (
+               <div className="flex-1 overflow-auto p-4 flex flex-col gap-5">
+                 <div className="flex flex-wrap items-center gap-2">
+                   {['BTC-USD', 'ETH-USD', 'SOL-USD'].map((s) => (
+                     <button key={s} onClick={() => setChartSymbol(s)}
+                       className={`text-[11px] tracking-widest uppercase px-3 py-1.5 border transition-colors ${chartSymbol === s ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}>
+                       {s.replace('-USD', '')}
+                     </button>
+                   ))}
+                   <span className="w-px h-5 bg-glass-border mx-2" />
+                   {(['15m', '1h', '4h', '1d'] as const).map((iv) => (
+                     <button key={iv} onClick={() => setChartInterval(iv)}
+                       className={`text-[11px] tracking-widest uppercase px-3 py-1.5 border transition-colors ${chartInterval === iv ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}>
+                       {iv}
+                     </button>
+                   ))}
+                 </div>
+
+                 {!chart ? (
+                   <div className="flex-1 flex items-center justify-center text-sm text-muted tracking-widest uppercase">loading real klines…</div>
+                 ) : (
+                   <div className="border border-glass-border bg-foreground/[0.01] p-4">
+                     <div className="flex justify-between text-[11px] text-muted tracking-widest uppercase mb-2">
+                       <span>{chart.symbol} · {chart.interval} × {chart.candles.length} (SoDEX)</span>
+                       <span className="text-foreground">
+                         ${chart.candles[chart.candles.length - 1]?.c.toLocaleString()}
+                       </span>
+                     </div>
+                     <svg className="w-full h-56" preserveAspectRatio="none" viewBox="0 0 100 40">
+                       {(() => {
+                         const cs = chart.candles;
+                         const lo = Math.min(...cs.map((k) => k.l)), hi = Math.max(...cs.map((k) => k.h));
+                         const range = hi - lo || 1;
+                         const y = (v: number) => 38 - ((v - lo) / range) * 36;
+                         const w = 100 / cs.length;
+                         return cs.map((k, i) => {
+                           const up = k.c >= k.o;
+                           const x = i * w + w / 2;
+                           return (
+                             <g key={k.t} className={up ? 'text-olive' : 'text-coral'}>
+                               <line x1={x} x2={x} y1={y(k.h)} y2={y(k.l)} stroke="currentColor" strokeWidth="0.18" />
+                               <rect x={i * w + w * 0.2} width={w * 0.6}
+                                 y={Math.min(y(k.o), y(k.c))}
+                                 height={Math.max(0.25, Math.abs(y(k.o) - y(k.c)))}
+                                 fill="currentColor" opacity="0.9" />
+                             </g>
+                           );
+                         });
+                       })()}
+                     </svg>
+                   </div>
+                 )}
+
+                 {indices.length > 0 && (
+                   <div>
+                     <div className="text-xs text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">SoSoValue SSI Indices</div>
+                     <div className="flex flex-wrap gap-2">
+                       {indices.slice(0, 8).map((ix, i) => (
+                         <span key={i} className="border border-glass-border px-3 py-1.5 text-[11px] text-foreground">
+                           {String(ix.ticker ?? ix.name ?? '?')}
+                           {ix.price != null || ix.value != null ? <span className="text-amber ml-2">{String(ix.price ?? ix.value)}</span> : null}
+                         </span>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+
+                 {treasuries.length > 0 && (
+                   <div>
+                     <div className="text-xs text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">BTC Corporate Treasuries (SoSoValue)</div>
+                     <table className="w-full text-sm text-left">
+                       <tbody className="text-foreground/80">
+                         {treasuries.slice(0, 6).map((tr, i) => (
+                           <tr key={i} className="border-b border-glass-border/30">
+                             <td className="py-1.5 text-foreground">{String(tr.name ?? tr.ticker ?? tr.company ?? '?')}</td>
+                             <td className="py-1.5 text-right text-muted">{tr.btcHoldings != null ? `${Number(tr.btcHoldings).toLocaleString()} BTC` : String(tr.holdings ?? tr.amount ?? '—')}</td>
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   </div>
                  )}
                </div>
              )}
@@ -464,21 +610,21 @@ export default function PortfolioPage() {
                      <div className="flex gap-1">
                        {(['BTC', 'ETH'] as const).map((s) => (
                          <button key={s} onClick={() => setEtfSymbol(s)}
-                           className={`text-[10px] tracking-widest uppercase px-3 py-1 border transition-colors ${etfSymbol === s ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}>
+                           className={`text-xs tracking-widest uppercase px-3 py-1 border transition-colors ${etfSymbol === s ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}>
                            {s} spot ETFs
                          </button>
                        ))}
                      </div>
                      {hist.length > 0 && hist[hist.length - 1].totalNetAssets !== undefined && (
-                       <div className="text-[10px] text-muted tracking-widest uppercase">
+                       <div className="text-xs text-muted tracking-widest uppercase">
                          Net assets {fmtUsd(hist[hist.length - 1].totalNetAssets ?? 0).replace('+', '')}
                        </div>
                      )}
                    </div>
                    {!etf ? (
-                     <div className="text-[10px] text-muted">loading SoSoValue ETF data…</div>
+                     <div className="text-xs text-muted">loading SoSoValue ETF data…</div>
                    ) : hist.length === 0 ? (
-                     <div className="text-[10px] text-muted font-sans">{etf.error ?? 'No ETF history returned.'}</div>
+                     <div className="text-xs text-muted font-sans">{etf.error ?? 'No ETF history returned.'}</div>
                    ) : (
                      <>
                        <div className="flex-1 flex items-end gap-1.5 min-h-[120px] border-b border-glass-border pb-px">
@@ -486,7 +632,7 @@ export default function PortfolioPage() {
                            const v = flows[i];
                            return (
                              <div key={h.date} className="flex-1 flex flex-col justify-end items-center gap-1 group relative">
-                               <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 text-[9px] text-foreground whitespace-nowrap">{fmtUsd(v)}</div>
+                               <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-5 text-[11px] text-foreground whitespace-nowrap">{fmtUsd(v)}</div>
                                <div
                                  className={`w-full ${v >= 0 ? 'bg-olive/70' : 'bg-coral/70'} group-hover:opacity-100 opacity-80`}
                                  style={{ height: `${Math.max(3, (Math.abs(v) / maxAbs) * 110)}px` }}
@@ -495,12 +641,12 @@ export default function PortfolioPage() {
                            );
                          })}
                        </div>
-                       <div className="flex justify-between text-[9px] text-muted tracking-widest uppercase mt-2">
+                       <div className="flex justify-between text-[11px] text-muted tracking-widest uppercase mt-2">
                          <span>{hist[0]?.date}</span>
                          <span>daily net flow · green in / red out</span>
                          <span>{hist[hist.length - 1]?.date}</span>
                        </div>
-                       <p className="text-[10px] text-muted font-sans leading-relaxed mt-4">{etf.note}</p>
+                       <p className="text-xs text-muted font-sans leading-relaxed mt-4">{etf.note}</p>
                      </>
                    )}
                  </div>
@@ -511,9 +657,9 @@ export default function PortfolioPage() {
              {deskTab === 'quant' && (
                <div className="flex-1 overflow-auto p-4">
                  {!backtest ? (
-                   <div className="text-[10px] text-muted">running the numbers…</div>
+                   <div className="text-xs text-muted">running the numbers…</div>
                  ) : backtest.n === 0 ? (
-                   <div className="text-[10px] text-muted font-sans">{backtest.caveats[0]}</div>
+                   <div className="text-xs text-muted font-sans">{backtest.caveats[0]}</div>
                  ) : (
                    <div className="space-y-6">
                      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-foreground/10 border border-foreground/10">
@@ -528,15 +674,15 @@ export default function PortfolioPage() {
                          ['CVaR 95', backtest.monteCarlo.cvar95Pct !== null ? `${backtest.monteCarlo.cvar95Pct}%` : '—', false],
                        ] as Array<[string, string, boolean]>).map(([k, v, pos]) => (
                          <div key={k} className="bg-background p-4">
-                           <div className="text-[9px] text-muted tracking-[0.25em] uppercase mb-2">{k}</div>
+                           <div className="text-[11px] text-muted tracking-[0.25em] uppercase mb-2">{k}</div>
                            <div className={`text-xl font-light ${v.startsWith('+') ? 'text-olive' : v.startsWith('-') && pos ? 'text-coral' : 'text-foreground'}`}>{v}</div>
                          </div>
                        ))}
                      </div>
-                     <div className="text-[10px] text-muted font-sans leading-relaxed space-y-1">
+                     <div className="text-xs text-muted font-sans leading-relaxed space-y-1">
                        {backtest.caveats.map((cv) => <div key={cv}>· {cv}</div>)}
                      </div>
-                     <Link href="/edge" className="inline-block text-[10px] tracking-widest uppercase border border-amber/40 text-amber px-4 py-2 hover:bg-amber/10 transition-colors">
+                     <Link href="/edge" className="inline-block text-xs tracking-widest uppercase border border-amber/40 text-amber px-4 py-2 hover:bg-amber/10 transition-colors">
                        Full head-to-head → Proof of Edge
                      </Link>
                    </div>
@@ -548,16 +694,16 @@ export default function PortfolioPage() {
              <div className="flex-1 overflow-auto p-4">
                {trades.length === 0 ? (
                  <div className="h-full flex flex-col items-center justify-center text-center gap-4 px-8">
-                   <div className="text-muted text-xs leading-relaxed max-w-sm font-sans">
+                   <div className="text-muted text-sm leading-relaxed max-w-sm font-sans">
                      No positions yet. The agent only trades when a macro print clears the surprise,
                      conviction and risk gates — fire a live run to watch the whole loop.
                    </div>
-                   <button onClick={() => setIsTradeModalOpen(true)} className="text-[10px] tracking-widest uppercase border border-amber/40 text-amber px-4 py-2 hover:bg-amber/10 transition-colors">
+                   <button onClick={() => setIsTradeModalOpen(true)} className="text-xs tracking-widest uppercase border border-amber/40 text-amber px-4 py-2 hover:bg-amber/10 transition-colors">
                      Fire Live Run
                    </button>
                  </div>
                ) : (
-               <table className="w-full text-xs text-left border-collapse">
+               <table className="w-full text-sm text-left border-collapse">
                  <thead>
                    <tr className="text-muted border-b border-glass-border/50">
                      <th className="pb-2 font-normal cursor-pointer hover:text-amber transition-colors" onClick={() => handleSort('symbol')}>
@@ -582,7 +728,7 @@ export default function PortfolioPage() {
                            {pos.symbol}
                          </div>
                        </td>
-                       <td className={`py-3 text-[10px] tracking-wider ${pos.side === 'LONG' ? 'text-olive' : 'text-coral'}`}>{pos.side}</td>
+                       <td className={`py-3 text-xs tracking-wider ${pos.side === 'LONG' ? 'text-olive' : 'text-coral'}`}>{pos.side}</td>
                        <td className="py-3 text-right">{pos.leverage ?? 1}×</td>
                        <td className="py-3 text-right text-muted">{pos.entryPrice?.toLocaleString() ?? '—'}</td>
                        <td className="py-3 text-right text-muted">
@@ -591,7 +737,7 @@ export default function PortfolioPage() {
                        <td className={`py-3 text-right ${(pos.pnl ?? 0) >= 0 ? 'text-olive' : 'text-coral'}`}>
                          {pos.pnl !== null ? `${pos.pnl >= 0 ? '+' : ''}${pos.pnl.toFixed(2)}` : 'live'}
                        </td>
-                       <td className="py-3 text-right text-[10px] tracking-wider text-muted">{pos.status}</td>
+                       <td className="py-3 text-right text-xs tracking-wider text-muted">{pos.status}</td>
                      </tr>
                    ))}
                  </tbody>
@@ -605,11 +751,11 @@ export default function PortfolioPage() {
           <div className="flex gap-2 h-48 shrink-0">
              <div className="w-[40%] mara-glass p-0 flex flex-col bg-background/20">
                <div className="h-8 border-b border-glass-border flex items-center px-4 bg-foreground/[0.02]">
-                 <div className="text-[10px] text-muted tracking-widest uppercase">Engine Log · Live</div>
+                 <div className="text-xs text-muted tracking-widest uppercase">Engine Log · Live</div>
                </div>
                <div className="flex-1 overflow-auto p-4 space-y-2">
                  {logs.length === 0 && (
-                   <div className="text-[10px] text-muted">Waiting for engine activity…</div>
+                   <div className="text-xs text-muted">Waiting for engine activity…</div>
                  )}
                  <AnimatePresence initial={false}>
                    {logs.map(log => (
@@ -619,7 +765,7 @@ export default function PortfolioPage() {
                        animate={{ opacity: 1, x: 0 }}
                        exit={{ opacity: 0 }}
                        transition={{ duration: 0.3 }}
-                       className={`flex gap-3 text-[10px] font-mono border-l-2 p-1.5 bg-foreground/[0.01] hover:bg-foreground/[0.03] transition-colors ${log.tone === 'bull' ? 'border-olive/30' : log.tone === 'bear' ? 'border-coral/30' : 'border-glass-border'}`}>
+                       className={`flex gap-3 text-xs font-mono border-l-2 p-1.5 bg-foreground/[0.01] hover:bg-foreground/[0.03] transition-colors ${log.tone === 'bull' ? 'border-olive/30' : log.tone === 'bear' ? 'border-coral/30' : 'border-glass-border'}`}>
                        <span className="text-muted/60 shrink-0">{log.time}</span>
                        <span className={`shrink-0 ${log.tone === 'bull' ? 'text-olive' : log.tone === 'bear' ? 'text-coral' : 'text-amber'}`}>{log.tag}</span>
                        <span className="text-foreground flex-1 truncate">{log.text}</span>
@@ -630,7 +776,7 @@ export default function PortfolioPage() {
              </div>
 
              <div className="flex-1 mara-glass p-4 relative overflow-hidden flex flex-col bg-background/20">
-               <div className="text-[10px] text-muted tracking-widest uppercase z-10 flex items-center gap-2 mb-2">
+               <div className="text-xs text-muted tracking-widest uppercase z-10 flex items-center gap-2 mb-2">
                  <Activity className="w-3 h-3 text-amber" />
                  Equity Curve {perf ? `· ${perf.closedTrades} closed · ${perf.winRate !== null ? `${perf.winRate}% wins` : 'no closes yet'}` : ''}
                </div>
@@ -639,7 +785,7 @@ export default function PortfolioPage() {
                    <path d={eqPath} fill="none" stroke="var(--color-amber)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
                  </svg>
                ) : (
-                 <div className="flex-1 flex items-center justify-center text-[10px] text-muted font-sans">
+                 <div className="flex-1 flex items-center justify-center text-xs text-muted font-sans">
                    The equity curve draws itself from real closed trades — none yet.
                  </div>
                )}
@@ -659,7 +805,7 @@ export default function PortfolioPage() {
               >
                  <div className="flex justify-between items-start mb-8 border-b border-glass-border pb-4">
                    <div>
-                     <div className="text-[10px] text-muted tracking-widest uppercase mb-1">Position Detail</div>
+                     <div className="text-xs text-muted tracking-widest uppercase mb-1">Position Detail</div>
                      <div className="text-3xl font-display">{selectedPos.symbol} <span className={selectedPos.side === 'LONG' ? 'text-olive' : 'text-coral'}>{selectedPos.side}</span></div>
                    </div>
                    <button onClick={() => setSelectedPos(null)} className="p-2 hover:bg-foreground/10 rounded-sm transition-colors">
@@ -680,14 +826,14 @@ export default function PortfolioPage() {
                       ['Opened', selectedPos.openedAt ? timeAgo(selectedPos.openedAt) : '—'],
                     ].map(([k, v]) => (
                       <div key={String(k)}>
-                        <div className="text-[10px] text-muted tracking-widest uppercase mb-2">{k}</div>
+                        <div className="text-xs text-muted tracking-widest uppercase mb-2">{k}</div>
                         <div className="font-mono text-lg">{String(v)}</div>
                       </div>
                     ))}
                  </div>
 
                  <div className="mt-8 flex-1 border border-glass-border rounded-sm bg-foreground/[0.02] p-6 overflow-auto">
-                   <div className="text-[10px] text-muted tracking-widest uppercase mb-3">Provenance</div>
+                   <div className="text-xs text-muted tracking-widest uppercase mb-3">Provenance</div>
                    <p className="text-sm font-sans text-muted leading-relaxed">
                      {selectedPos.decisionId
                        ? `This order was placed autonomously by decision ${selectedPos.decisionId.slice(0, 8)} — every trade carries its reasoning chain. SoDEX order: ${selectedPos.sodexOrderId ?? 'pending'}.`
@@ -716,7 +862,7 @@ export default function PortfolioPage() {
                   <button onClick={() => { setIsTradeModalOpen(false); setRunState(null); }} className="absolute top-4 right-4 text-muted hover:text-foreground">
                     <X className="w-4 h-4" />
                   </button>
-                  <div className="text-[10px] text-amber tracking-widest uppercase mb-2">Fire Live Run</div>
+                  <div className="text-xs text-amber tracking-widest uppercase mb-2">Fire Live Run</div>
                   <p className="text-[11px] font-sans text-muted leading-relaxed mb-6">
                     Inject a macro print and the full pipeline runs for real: surprise math → AI agent
                     → risk gates → (testnet) execution. Shared 20s cooldown across all users.
@@ -724,7 +870,7 @@ export default function PortfolioPage() {
 
                   <div className="space-y-4">
                     <div>
-                      <label className="text-[10px] text-muted tracking-widest uppercase mb-1 block">Event</label>
+                      <label className="text-xs text-muted tracking-widest uppercase mb-1 block">Event</label>
                       <select
                         value={runEvent}
                         onChange={(e) => setRunEvent(e.target.value)}
@@ -740,22 +886,22 @@ export default function PortfolioPage() {
                     </div>
                     <div className="flex gap-4">
                       <div className="flex-1">
-                        <label className="text-[10px] text-muted tracking-widest uppercase mb-1 block">Actual</label>
+                        <label className="text-xs text-muted tracking-widest uppercase mb-1 block">Actual</label>
                         <input value={runActual} onChange={(e) => setRunActual(e.target.value)} className="w-full bg-foreground/[0.02] border border-glass-border px-3 py-2 text-sm font-mono focus:outline-none focus:border-amber/50" />
                       </div>
                       <div className="flex-1">
-                        <label className="text-[10px] text-muted tracking-widest uppercase mb-1 block">Forecast</label>
+                        <label className="text-xs text-muted tracking-widest uppercase mb-1 block">Forecast</label>
                         <input value={runForecast} onChange={(e) => setRunForecast(e.target.value)} className="w-full bg-foreground/[0.02] border border-glass-border px-3 py-2 text-sm font-mono focus:outline-none focus:border-amber/50" />
                       </div>
                     </div>
 
                     <button
                       onClick={() => void fireRun()}
-                      className="w-full bg-amber/20 text-amber border border-amber/30 py-3 text-xs tracking-widest uppercase hover:bg-amber/30 transition-colors"
+                      className="w-full bg-amber/20 text-amber border border-amber/30 py-3 text-sm tracking-widest uppercase hover:bg-amber/30 transition-colors"
                     >
                       Engage Pipeline
                     </button>
-                    {runState && <div className="text-[10px] font-mono text-muted leading-relaxed">{runState}</div>}
+                    {runState && <div className="text-xs font-mono text-muted leading-relaxed">{runState}</div>}
                   </div>
                 </motion.div>
               </motion.div>
@@ -767,18 +913,18 @@ export default function PortfolioPage() {
         <aside className="w-72 flex flex-col gap-2 shrink-0">
            <div className="flex-1 mara-glass p-0 flex flex-col bg-background/20">
               <div className="h-8 border-b border-glass-border flex items-center px-4 bg-foreground/[0.02]">
-                <div className="text-[10px] text-muted tracking-widest uppercase">Macro Wire · SoSoValue</div>
+                <div className="text-xs text-muted tracking-widest uppercase">Macro Wire · SoSoValue</div>
               </div>
               <div className="flex-1 overflow-auto p-4 space-y-3">
                  {news.length === 0 && (
-                   <div className="text-[10px] text-muted">news feed syncing…</div>
+                   <div className="text-xs text-muted">news feed syncing…</div>
                  )}
                  {news.map((n, i) => (
                    <div key={n.id} className={`p-3 rounded-sm transition-colors cursor-default border ${i === 0 ? 'bg-amber/5 border-amber/20' : 'bg-foreground/5 border-glass-border opacity-80 hover:opacity-100'}`}>
-                     <div className={`text-[9px] tracking-widest uppercase mb-1 ${i === 0 ? 'text-amber' : 'text-muted'}`}>
+                     <div className={`text-[11px] tracking-widest uppercase mb-1 ${i === 0 ? 'text-amber' : 'text-muted'}`}>
                        {timeAgo(n.publishTime || n.releaseTime)}{n.matchedCurrencies.length ? ` · ${n.matchedCurrencies.slice(0, 3).join(' ')}` : ''}
                      </div>
-                     <div className="text-xs text-foreground font-sans leading-snug">{n.title}</div>
+                     <div className="text-sm text-foreground font-sans leading-snug">{n.title}</div>
                    </div>
                  ))}
               </div>
@@ -786,11 +932,11 @@ export default function PortfolioPage() {
 
            <div className="h-48 mara-glass p-6 relative overflow-hidden group bg-background/40">
               <div className="absolute top-0 right-0 w-32 h-32 bg-amber/10 rounded-full blur-2xl group-hover:bg-amber/20 transition-colors" />
-              <div className="text-[9px] text-muted tracking-widest uppercase mb-4">Latest Verdict</div>
+              <div className="text-[11px] text-muted tracking-widest uppercase mb-4">Latest Verdict</div>
               <div className={`text-3xl font-display leading-none mb-3 ${latestDecision && latestDecision.action === 'SHORT' ? 'text-coral' : 'text-foreground'}`}>
                 {latestDecision ? latestDecision.conviction.replace('_', ' ') : 'STANDBY'}
               </div>
-              <div className="text-xs text-muted font-sans leading-relaxed line-clamp-3">
+              <div className="text-sm text-muted font-sans leading-relaxed line-clamp-3">
                 {latestDecision
                   ? `${latestDecision.confidence}% — ${latestDecision.reasoning}`
                   : 'The desk renders the agent\'s most recent reasoning here the moment a print fires.'}

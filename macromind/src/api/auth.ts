@@ -25,10 +25,13 @@ export const SIGNUP_GRANT = 1000;           // Google / wallet accounts
 // Guests can browse everything but earn no credits — credits are the reward
 // for a real (Google / wallet) login, which is what gates Signal Duel stakes.
 export const GUEST_GRANT = 0;
+// Telegram identities are real (chat id) but lighter than Google/wallet.
+export const TELEGRAM_GRANT = 500;
+export const REFERRAL_BONUS = 250;          // granted to BOTH sides on signup via ?ref=
 
 export interface User {
   id: string;
-  provider: 'google' | 'wallet' | 'guest';
+  provider: 'google' | 'wallet' | 'guest' | 'telegram';
   provider_id: string;
   email: string | null;
   name: string | null;
@@ -67,7 +70,7 @@ export function spendCredits(userId: string, amount: number, reason: string, ref
 
 // ── Users & sessions ──────────────────────────────────────────────────────────
 
-function findOrCreateUser(
+export function findOrCreateUser(
   provider: User['provider'],
   providerId: string,
   fields: Partial<Pick<User, 'email' | 'name' | 'avatar' | 'wallet_address'>>,
@@ -95,10 +98,30 @@ function findOrCreateUser(
   db.prepare(
     'INSERT INTO users (id, provider, provider_id, email, name, avatar, wallet_address, created_at) VALUES (?,?,?,?,?,?,?,?)',
   ).run(user.id, user.provider, user.provider_id, user.email, user.name, user.avatar, user.wallet_address, user.created_at);
-  const grant = provider === 'guest' ? GUEST_GRANT : SIGNUP_GRANT;
+  const grant = provider === 'guest' ? GUEST_GRANT
+    : provider === 'telegram' ? TELEGRAM_GRANT
+    : SIGNUP_GRANT;
   if (grant > 0) grantCredits(user.id, grant, 'signup_grant');
   logger.info(`New ${provider} account ${user.id.slice(0, 8)} — granted ${grant} credits`);
   return { user, created: true };
+}
+
+/** Referral: on a fresh real signup carrying ?ref=<userId>, both sides get a bonus.
+ *  One referral per invited user, no self-referrals, referrer must exist. */
+export function applyReferral(newUserId: string, refCode: string | null | undefined): boolean {
+  const ref = (refCode ?? '').trim();
+  if (!ref || ref === newUserId) return false;
+  const db = getDb();
+  const referrer = db.prepare('SELECT id FROM users WHERE id = ?').get(ref) as { id: string } | undefined;
+  if (!referrer) return false;
+  const already = db.prepare('SELECT user_id FROM referrals WHERE user_id = ?').get(newUserId);
+  if (already) return false;
+  db.prepare('INSERT INTO referrals (user_id, referrer_id, created_at) VALUES (?,?,?)')
+    .run(newUserId, referrer.id, Date.now());
+  grantCredits(newUserId, REFERRAL_BONUS, 'referral_joined', referrer.id);
+  grantCredits(referrer.id, REFERRAL_BONUS, 'referral_invited', newUserId);
+  logger.info(`Referral: ${referrer.id.slice(0, 8)} invited ${newUserId.slice(0, 8)} — +${REFERRAL_BONUS} each`);
+  return true;
 }
 
 function createSession(userId: string): string {
@@ -172,10 +195,11 @@ export function authRoutes(app: Hono): void {
     if (!clientId) {
       return c.json({ error: 'Google Sign-In not configured — set GOOGLE_CLIENT_ID on the backend and VITE_GOOGLE_CLIENT_ID on the frontend.' }, 503);
     }
-    let credential = '';
+    let credential = '', refCode = '';
     try {
-      const body = await c.req.json() as { credential?: string };
+      const body = await c.req.json() as { credential?: string; ref?: string };
       credential = body.credential ?? '';
+      refCode = body.ref ?? '';
     } catch { /* handled below */ }
     if (!credential) return c.json({ error: 'credential (Google ID token) is required' }, 400);
 
@@ -191,11 +215,12 @@ export function authRoutes(app: Hono): void {
     if (info.aud !== clientId) return c.json({ error: 'Token audience mismatch — wrong Google client ID' }, 401);
     if (!info.sub) return c.json({ error: 'Token missing subject' }, 401);
 
-    const { user } = findOrCreateUser('google', info.sub, {
+    const { user, created } = findOrCreateUser('google', info.sub, {
       email: info.email ?? null,
       name: info.name ?? info.email ?? null,
       avatar: info.picture ?? null,
     });
+    if (created) applyReferral(user.id, refCode);
     return c.json(sessionPayload(user, createSession(user.id)));
   });
 
@@ -215,11 +240,12 @@ export function authRoutes(app: Hono): void {
 
   // Wallet auth step 2: verify personal_sign — EIP-191 recovery via ethers
   app.post('/api/auth/wallet/verify', async (c) => {
-    let address = '', signature = '';
+    let address = '', signature = '', refCode = '';
     try {
-      const body = await c.req.json() as { address?: string; signature?: string };
+      const body = await c.req.json() as { address?: string; signature?: string; ref?: string };
       address = (body.address ?? '').trim();
       signature = (body.signature ?? '').trim();
+      refCode = body.ref ?? '';
     } catch { /* handled below */ }
     if (!ethers.isAddress(address) || !signature) {
       return c.json({ error: 'address and signature are required' }, 400);
@@ -240,10 +266,11 @@ export function authRoutes(app: Hono): void {
     }
     nonces.delete(checksummed.toLowerCase());
 
-    const { user } = findOrCreateUser('wallet', checksummed.toLowerCase(), {
+    const { user, created } = findOrCreateUser('wallet', checksummed.toLowerCase(), {
       name: `${checksummed.slice(0, 6)}…${checksummed.slice(-4)}`,
       wallet_address: checksummed,
     });
+    if (created) applyReferral(user.id, refCode);
     return c.json(sessionPayload(user, createSession(user.id)));
   });
 

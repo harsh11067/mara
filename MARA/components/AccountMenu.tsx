@@ -8,6 +8,7 @@ import {
   logout, discoverWallets, loadGis, GOOGLE_CLIENT_ID,
   type DiscoveredWallet,
 } from '@/lib/session';
+import { QuickActions } from '@/components/QuickActions';
 
 /**
  * Credits chip + auth popover. Credits are the fuel for Signal Duel:
@@ -81,7 +82,8 @@ export function AccountMenu() {
   };
 
   return (
-    <div ref={rootRef} className="relative pointer-events-auto">
+    <div ref={rootRef} className="relative pointer-events-auto flex items-center gap-4">
+      <QuickActions />
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-3 border border-glass-border bg-background/60 backdrop-blur-md px-4 py-2 rounded-full hover:border-amber/40 transition-colors group"

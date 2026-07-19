@@ -13,6 +13,7 @@ import {
   type BackendDecision, type BackendRegime, type BackendPerformanceSummary, type ReplayTimeline,
 } from '@/lib/api';
 import { useEnvironment } from '@/components/context/EnvironmentContext';
+import { captureReferral } from '@/lib/session';
 
 const CARD_ICONS = [Activity, Zap, BrainCircuit, BarChart3, Globe, Fingerprint];
 
@@ -31,6 +32,7 @@ export default function LandingPage() {
   const [cpiReplay, setCpiReplay] = useState<ReplayTimeline['summary'] | null>(null);
 
   useEffect(() => {
+    captureReferral(); // ?ref=<userId> → +250 CR both sides on first real login
     void api.decisions().then(setDecisions).catch(() => {});
     void api.perfSummary().then(setPerf).catch(() => {});
     void api.diag().then((d) => setCorpusRows(d.corpus.rows)).catch(() => {});

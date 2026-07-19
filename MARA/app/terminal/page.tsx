@@ -124,7 +124,7 @@ export default function TerminalPage() {
       <header className="fixed top-0 w-full px-12 py-8 flex justify-between items-baseline z-50 pointer-events-none border-b border-foreground/5">
         <div className="flex gap-12 items-baseline pointer-events-auto">
           <Link href="/" className="text-2xl tracking-tight text-foreground hover:text-amber transition-colors font-display italic">MARA</Link>
-          <div className="hidden md:flex gap-8 text-[10px] tracking-[0.2em] text-muted uppercase font-medium">
+          <div className="hidden md:flex gap-8 text-xs tracking-[0.2em] text-muted uppercase font-medium">
             <span className="text-foreground border-b border-foreground/30 pb-1">Cognition</span>
             <Link href="/duel" className="text-amber hover:text-foreground transition-colors cursor-pointer">Duel</Link>
             <Link href="/replay" className="hover:text-foreground transition-colors cursor-pointer">Replay</Link>
@@ -138,8 +138,8 @@ export default function TerminalPage() {
             <HelpCircle className="w-4 h-4" />
           </button>
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-mono text-muted">{time || '—'}</span>
-            <span className={`text-[9px] font-mono tracking-widest mt-1 ${killSwitch ? 'text-coral' : wsLive ? 'text-amber' : 'text-muted'}`}>
+            <span className="text-xs font-mono text-muted">{time || '—'}</span>
+            <span className={`text-[11px] font-mono tracking-widest mt-1 ${killSwitch ? 'text-coral' : wsLive ? 'text-amber' : 'text-muted'}`}>
               {killSwitch ? 'KILL SWITCH ENGAGED' : wsLive ? 'CORE STATUS: SYNCHRONIZED' : 'CORE STATUS: LINKING…'}
             </span>
           </div>
@@ -177,7 +177,7 @@ export default function TerminalPage() {
             }}
             transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
           >
-             <div className="text-[9px] font-mono text-amber tracking-widest uppercase mb-3">
+             <div className="text-[11px] font-mono text-amber tracking-widest uppercase mb-3">
                {latestDecision ? `Verdict · ${timeAgo(latestDecision.timestamp)}` : 'Verdict'}
              </div>
              <div className="text-2xl font-display text-foreground leading-tight">
@@ -196,7 +196,7 @@ export default function TerminalPage() {
             }}
             transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
           >
-             <div className="text-[9px] font-mono text-coral tracking-widest uppercase mb-3">Drawdown vs limit</div>
+             <div className="text-[11px] font-mono text-coral tracking-widest uppercase mb-3">Drawdown vs limit</div>
              <div className="text-xl font-mono text-foreground mb-4">
                {risk ? `${risk.drawdownPercent.toFixed(2)}% / ${risk.limits?.maxDrawdownPct ?? 5}%` : '—'}
              </div>
@@ -214,7 +214,7 @@ export default function TerminalPage() {
           transition={{ duration: 1.2, delay: 0.2 }}
         >
           <div className="flex flex-col">
-            <span className="text-[10px] tracking-[0.3em] text-muted mb-6 uppercase">Processor // 01</span>
+            <span className="text-xs tracking-[0.3em] text-muted mb-6 uppercase">Processor // 01</span>
             <h2 className="text-5xl leading-[1.05] text-foreground font-display italic">
               Autonomous<br/>Reasoning
             </h2>
@@ -224,9 +224,9 @@ export default function TerminalPage() {
 
           <div className="pt-2">
             <div className="flex items-center gap-4 mb-3">
-              <span className="text-[9px] font-mono text-muted whitespace-nowrap tracking-[0.2em]">LIVE FEED</span>
+              <span className="text-[11px] font-mono text-muted whitespace-nowrap tracking-[0.2em]">LIVE FEED</span>
               <div className="flex-1 h-[1px] bg-gradient-to-r from-foreground/20 to-transparent" />
-              <span className={`text-[9px] font-mono tracking-[0.2em] ${wsLive ? 'text-amber' : 'text-muted'}`}>
+              <span className={`text-[11px] font-mono tracking-[0.2em] ${wsLive ? 'text-amber' : 'text-muted'}`}>
                 {wsLive ? 'WS CONNECTED' : 'RECONNECTING'}
               </span>
             </div>
@@ -242,13 +242,13 @@ export default function TerminalPage() {
         >
           <div className="flex gap-12 border-l border-foreground/10 pl-8">
             <div className="flex flex-col">
-              <span className="text-[9px] text-muted tracking-[0.2em] uppercase mb-2">Confidence</span>
+              <span className="text-[11px] text-muted tracking-[0.2em] uppercase mb-2">Confidence</span>
               <span className="text-3xl font-mono text-foreground font-light">
                 {latestDecision ? `${latestDecision.confidence}%` : '—'}
               </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[9px] text-muted tracking-[0.2em] uppercase mb-2">AI latency</span>
+              <span className="text-[11px] text-muted tracking-[0.2em] uppercase mb-2">AI latency</span>
               <span className="text-3xl font-mono text-amber font-light">
                 {aiLatency !== null ? `${aiLatency}ms` : '—'}
               </span>
@@ -259,19 +259,19 @@ export default function TerminalPage() {
           <div className={`w-[300px] bg-secondary/80 backdrop-blur-xl border-l-2 p-6 ${latestTrade ? 'border-coral' : 'border-glass-border'}`}>
             {latestTrade ? (
               <div>
-                <div className="text-[9px] font-mono text-coral mb-2 uppercase tracking-widest">
+                <div className="text-[11px] font-mono text-coral mb-2 uppercase tracking-widest">
                   {latestTrade.status === 'OPEN' ? 'Position Open' : `Position ${latestTrade.status.toLowerCase()}`}
                 </div>
                 <div className="text-xl font-mono tracking-tight text-foreground mb-1">
                   {latestTrade.side} {latestTrade.symbol} ×{latestTrade.leverage ?? 1}
                 </div>
-                <div className="text-[10px] font-mono text-muted">
+                <div className="text-xs font-mono text-muted">
                   entry {latestTrade.entryPrice ?? '—'} · P&L {latestTrade.pnl !== null ? `${latestTrade.pnl >= 0 ? '+' : ''}${latestTrade.pnl.toFixed(2)}` : 'live'}
                 </div>
               </div>
             ) : (
               <div>
-                <div className="text-[9px] font-mono text-muted mb-2 uppercase tracking-widest">Execution idle</div>
+                <div className="text-[11px] font-mono text-muted mb-2 uppercase tracking-widest">Execution idle</div>
                 <div className="text-sm font-sans text-muted leading-relaxed">
                   No live orders. The risk engine only commits capital when a verdict clears every gate.
                 </div>
@@ -288,19 +288,19 @@ export default function TerminalPage() {
           transition={{ duration: 1.2, delay: 0.6 }}
         >
           <div className="flex flex-col items-end text-right mb-8">
-            <span className="text-[10px] tracking-[0.3em] text-muted mb-4 uppercase">Engine // 04</span>
+            <span className="text-xs tracking-[0.3em] text-muted mb-4 uppercase">Engine // 04</span>
             <h3 className="text-2xl leading-[1.1] text-foreground font-display italic">Live Markets</h3>
           </div>
 
           <div className="grid grid-cols-2 gap-px bg-foreground/10 border border-foreground/10 rounded-sm">
             {(tickers.length > 0 ? tickers : [null, null, null, null]).map((t, i) => (
               <div key={t?.symbol ?? i} className="bg-background/80 backdrop-blur-xl p-5 hover:bg-card transition-colors">
-                <span className="block text-[9px] text-muted mb-2 uppercase tracking-widest">{t?.symbol ?? '—'}</span>
+                <span className="block text-[11px] text-muted mb-2 uppercase tracking-widest">{t?.symbol ?? '—'}</span>
                 <span className="text-lg font-mono text-foreground block truncate">
                   {t ? t.price.toLocaleString(undefined, { maximumFractionDigits: t.price > 100 ? 0 : 2 }) : '—'}
                 </span>
                 {t?.changePct !== null && t?.changePct !== undefined && (
-                  <span className={`text-[10px] font-mono ${t.changePct >= 0 ? 'text-olive' : 'text-coral'}`}>
+                  <span className={`text-xs font-mono ${t.changePct >= 0 ? 'text-olive' : 'text-coral'}`}>
                     {t.changePct >= 0 ? '+' : ''}{t.changePct.toFixed(2)}%
                   </span>
                 )}
@@ -316,18 +316,18 @@ export default function TerminalPage() {
         <div className="flex items-center gap-6 w-2/3">
           <div className="flex items-center gap-2 shrink-0">
             <div className={`w-1.5 h-1.5 rounded-full ${wsLive ? 'bg-coral animate-pulse' : 'bg-muted'}`} />
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-foreground">
+            <span className="text-xs font-mono uppercase tracking-[0.2em] text-foreground">
               {wsLive ? 'Live Stream Active' : 'Stream Reconnecting'}
             </span>
           </div>
           <div className="h-4 w-[1px] bg-foreground/20 shrink-0" />
-          <span className="text-[10px] font-mono text-muted overflow-hidden whitespace-nowrap overflow-ellipsis uppercase">
+          <span className="text-xs font-mono text-muted overflow-hidden whitespace-nowrap overflow-ellipsis uppercase">
             {news.length > 0
               ? news.map((n) => n.title).join(' // ')
               : 'SOSOVALUE NEWS FEED SYNCING…'}
           </span>
         </div>
-        <div className="flex gap-8 text-[9px] font-mono tracking-widest text-muted">
+        <div className="flex gap-8 text-[11px] font-mono tracking-widest text-muted">
           <Link href="/portfolio" className="text-foreground cursor-pointer uppercase hover:text-amber transition-colors">Portfolio Desk</Link>
           <Link href="/replay" className="hover:text-foreground cursor-pointer uppercase transition-colors">Audit Log</Link>
         </div>

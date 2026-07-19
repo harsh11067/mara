@@ -22,6 +22,8 @@ import { startApiServer, broadcast } from './api/server.js';
 import { sodexWsClient } from './services/sodex-ws-client.js';
 import { attestationService } from './services/attestation-service.js';
 import { restoreFromNeon, startReplicator, stopReplicator } from './store/db-replicator.js';
+import { startArcadeResolver, stopArcadeResolver } from './games/arcade.js';
+import { startTelegramDeck, stopTelegramDeck, tgSend } from './services/telegram-deck.js';
 
 const logger = createLogger('MARA');
 
@@ -210,6 +212,8 @@ async function main(): Promise<void> {
   portfolioTracker.start();
   cronManager.start();
   sodexWsClient.start();     // live SoDEX position/order/balance feed
+  startArcadeResolver(broadcast, tgSend);  // settles arcade bets vs live marks
+  startTelegramDeck();       // bidirectional bot commands (long-poll)
 
   // Log the on-chain attestation status so it's obvious at boot.
   if (config.attestation.contractAddress && config.attestation.identityCoherent) {
@@ -231,6 +235,8 @@ async function main(): Promise<void> {
     cronManager.stop();
     portfolioTracker.stop();
     sodexWsClient.stop();
+    stopArcadeResolver();
+    stopTelegramDeck();
     attestationService.stop();  // flushes any pending attestations
     await stopReplicator();     // final Neon snapshot push
     logger.info('MARA stopped.');

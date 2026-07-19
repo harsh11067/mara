@@ -20,6 +20,25 @@ const logger = createLogger('KillSwitch');
 
 let isActive = false;
 
+export interface KillState {
+  active: boolean;
+  reason: string | null;
+  activatedAt: number | null;
+  ordersCancelled: boolean;
+  positionsClosed: number;
+  lastResetAt: number | null;
+}
+
+const killState: KillState = {
+  active: false, reason: null, activatedAt: null,
+  ordersCancelled: false, positionsClosed: 0, lastResetAt: null,
+};
+
+/** Full state for the UI — SAFE MODE banners, reason, what the switch did. */
+export function getKillState(): KillState {
+  return { ...killState, active: isActive };
+}
+
 export function isKillSwitchActive(): boolean {
   return isActive;
 }
@@ -31,6 +50,10 @@ export async function activateKillSwitch(reason: string): Promise<void> {
   }
 
   isActive = true;
+  killState.reason = reason;
+  killState.activatedAt = Date.now();
+  killState.ordersCancelled = false;
+  killState.positionsClosed = 0;
   logger.error(`⚡ KILL SWITCH ACTIVATED: ${reason}`);
 
   const client = new SoDEXClient(config.sodex.endpoint, config.sodex.apiKeyName);
@@ -54,6 +77,7 @@ export async function activateKillSwitch(reason: string): Promise<void> {
     });
     const json = await res.json() as { code?: number };
     if (json.code === 0 || json.code === 200) {
+      killState.ordersCancelled = true;
       logger.info('Kill switch: all open orders cancelled');
     } else {
       logger.warn('Kill switch: cancel-all returned error', { code: json.code });
@@ -105,6 +129,7 @@ export async function activateKillSwitch(reason: string): Promise<void> {
             body: JSON.stringify(body),
           });
           const json = await res.json() as { code?: number; data?: unknown };
+          killState.positionsClosed++;
           logger.info(`Kill switch: closed ${pos.symbol}`, { code: json.code });
         } catch (closeErr) {
           logger.error(`Kill switch: failed to close ${pos.symbol}`, { error: String(closeErr) });
@@ -145,5 +170,6 @@ export async function activateKillSwitch(reason: string): Promise<void> {
 
 export function resetKillSwitch(): void {
   isActive = false;
+  killState.lastResetAt = Date.now();
   logger.warn('Kill switch RESET by operator');
 }
