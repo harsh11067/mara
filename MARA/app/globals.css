@@ -78,3 +78,33 @@
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
+
+/* Wave 3 final polish: smoothness + accessibility */
+html {
+  scroll-behavior: smooth;
+}
+
+/* The tape eases in instead of popping */
+.mara-tape-bar {
+  animation: mara-tape-in 0.8s ease-out both;
+}
+@keyframes mara-tape-in {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Panel content cross-fade used by desk tabs */
+.mara-fade-in {
+  animation: mara-fade-in 0.28s ease-out both;
+}
+@keyframes mara-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Respect prefers-reduced-motion: stop the marquee and heavy movement */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .mara-tape-track { animation: none !important; }
+  .mara-fade-in, .mara-tape-bar { animation: none !important; }
+}

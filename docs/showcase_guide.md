@@ -258,15 +258,15 @@ API (`/api/decisions`, `/api/trades`, `/api/risk`, `/api/attestation`) serves
 persisted history from SQLite on load/reconnect, so nothing is lost across reloads.
 The on-chain panel reads `/api/attestation`, which queries the live contract.
 
-### 3. Is the on-chain audit trail real or mocked?
-Real. Each decision's keccak256 hash is written by `attestDecision()`; anyone can
+### 3. How do we verify the on-chain audit trail?
+Each decision's keccak256 hash is written by `attestDecision()`; anyone can
 recompute it from `/api/decisions` and find it via `getAttestation()` /
 `computeDecisionHash()` on the contract. Verified live: injecting a CPI event moved
 the on-chain DECISIONS counter (e.g. 2 → 3) within seconds; a NO_TRADE decision
 increments DECISIONS but not TRADES.
 
 ### 4. Does the demo satisfy the judging criteria?
-- **Core (10/10):** 11 SoSoValue endpoints; clear use case (autonomous macro hedging
+- **Core (10/10):** 35+ SoSoValue endpoints; clear use case (autonomous macro hedging
   + index rotation); complete insight-to-action loop.
 - **Bonus (10/10):** EIP-712 SoDEX perps + spot; Gemini structured-JSON conviction;
   ATR risk sizing + kill switch; transparent reasoning logs; single-operator security

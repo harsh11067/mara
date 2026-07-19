@@ -493,7 +493,7 @@ export default function PortfolioPage() {
 
              {/* ── Exchange tab: signed SoDEX reads — venue truth, not our DB ── */}
              {deskTab === 'exchange' && (
-               <div className="flex-1 overflow-auto p-4 space-y-6">
+               <div className="mara-fade-in flex-1 overflow-auto p-4 space-y-6">
                  {!account ? (
                    <div className="text-xs text-muted">reading the venue (signed request)…</div>
                  ) : (
@@ -582,7 +582,7 @@ export default function PortfolioPage() {
 
              {/* ── Market tab (Wave 7): the venue's REAL order book + tape + sectors ── */}
              {deskTab === 'market' && (
-               <div className="flex-1 overflow-auto p-4 flex flex-col gap-5">
+               <div className="mara-fade-in flex-1 overflow-auto p-4 flex flex-col gap-5">
                  <div className="flex flex-wrap items-center gap-2">
                    {['BTC-USD', 'ETH-USD', 'SOL-USD'].map((s) => (
                      <button key={s} onClick={() => setMktSymbol(s)}
@@ -683,7 +683,7 @@ export default function PortfolioPage() {
 
              {/* ── Charts tab: real SoDEX klines + SoSoValue indices/treasuries ── */}
              {deskTab === 'charts' && (
-               <div className="flex-1 overflow-auto p-4 flex flex-col gap-5">
+               <div className="mara-fade-in flex-1 overflow-auto p-4 flex flex-col gap-5">
                  <div className="flex flex-wrap items-center gap-2">
                    {['BTC-USD', 'ETH-USD', 'SOL-USD'].map((s) => (
                      <button key={s} onClick={() => setChartSymbol(s)}
@@ -805,7 +805,7 @@ export default function PortfolioPage() {
                  return `${v < 0 ? '-' : '+'}$${s}`;
                };
                return (
-                 <div className="flex-1 overflow-auto p-4 flex flex-col">
+                 <div className="mara-fade-in flex-1 overflow-auto p-4 flex flex-col">
                    <div className="flex items-center justify-between mb-4">
                      <div className="flex gap-1">
                        {(['BTC', 'ETH'] as const).map((s) => (
@@ -855,7 +855,7 @@ export default function PortfolioPage() {
 
              {/* ── Quant tab: the backtest engine, honestly discounted ── */}
              {deskTab === 'quant' && (
-               <div className="flex-1 overflow-auto p-4">
+               <div className="mara-fade-in flex-1 overflow-auto p-4">
                  {!backtest ? (
                    <div className="text-xs text-muted">running the numbers…</div>
                  ) : backtest.n === 0 ? (
@@ -891,7 +891,7 @@ export default function PortfolioPage() {
              )}
 
              {deskTab === 'positions' && (
-             <div className="flex-1 overflow-auto p-4">
+             <div className="mara-fade-in flex-1 overflow-auto p-4">
                {trades.length === 0 ? (
                  <div className="h-full flex flex-col items-center justify-center text-center gap-4 px-8">
                    <div className="text-muted text-sm leading-relaxed max-w-sm font-sans">

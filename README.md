@@ -16,18 +16,18 @@
 
 <br/><br/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Courier+New&weight=600&size=17&duration=2600&pause=800&color=FFB347&background=09080700&center=true&vCenter=true&width=720&lines=CPI+prints+hot+→+agent+reasons+in+5+tool+calls;stake+credits+·+duel+the+agent+·+double+or+nothing;rewind+a+decade+of+prints+—+zero+lookahead;detect+→+reason+→+risk+→+execute+→+attest" alt="MARA loop"/>
+<img src="https://readme-typing-svg.demolab.com?font=Courier+New&weight=600&size=17&duration=2600&pause=800&color=FFB347&background=09080700&center=true&vCenter=true&width=720&lines=CPI+prints+hot+→+agent+reasons+in+5+tool+calls;stake+credits+·+duel+the+agent+·+double+or+nothing;rewind+two+years+of+prints+—+zero+lookahead;detect+→+reason+→+risk+→+execute+→+attest+on-chain" alt="MARA loop"/>
 
 </div>
 
 # MARA: Macro-Aware Research & Execution Agent
 
-**The terminal:** [mara-neon.vercel.app](https://mara-neon.vercel.app) · **Duel the agent:** [/duel](https://mara-neon.vercel.app/duel) · **Time Machine:** [/replay](https://mara-neon.vercel.app/replay) · **Live cognition:** [/terminal](https://mara-neon.vercel.app/terminal) · **Desk:** [/portfolio](https://mara-neon.vercel.app/portfolio)
+**The terminal:** [mara-neon.vercel.app](https://mara-neon.vercel.app) · **Duel the agent:** [/duel](https://mara-neon.vercel.app/duel) · **Time Machine:** [/replay](https://mara-neon.vercel.app/replay) · **Proof of Edge:** [/edge](https://mara-neon.vercel.app/edge) · **Live cognition:** [/terminal](https://mara-neon.vercel.app/terminal) · **Desk:** [/portfolio](https://mara-neon.vercel.app/portfolio)
 
 ```mermaid
 flowchart LR
     subgraph V["◤ Vercel — MARA frontend (Next.js 15, static)"]
-        L["/  landing"] --- T["/terminal"] --- P["/portfolio"] --- D["/duel"] --- R["/replay"]
+        L["/  landing"] --- T["/terminal"] --- P["/portfolio"] --- D["/duel"] --- R["/replay"] --- E2["/edge"]
     end
     subgraph B["◤ Render — macromind engine (Hono + WebSocket)"]
         SC[dual-path\nevent scanner] --> SE[surprise\nz-engine] --> AG[agentic Gemini\n7 real tools]
@@ -42,39 +42,44 @@ flowchart LR
     B --> NE[(Neon\nsnapshots)]
 ```
 
-## 🌊 Wave 4 — the MARA frontend takeover
+## 🌊 Wave 3 — built in six phases
 
-- **A frontend people can steal from** — the deployed app is now `MARA/`: a Next.js 15 spatial interface (Instrument Serif italic display over Spline-mono data, d3 guilloche fields, a three.js monetary core, magnetic custom cursor) where **the ambience itself is market data**: the background glow's intensity is real 30-day BTC vol and its temperature is the real trend direction, polled from the engine's regime classifier.
-- **Nothing on screen is staged** — every number on all five pages traces to an engine endpoint or the WebSocket ([mocks.md](mocks.md) audit, section G): the landing's meters are the live regime, the pulse cards are real decisions, the terminal streams real `agent_trace` steps, the portfolio desk shows real SoDEX positions, probes, equity and the real kill switch.
-- **⚔️ Gamified Signal Duel** — stake credits on BULL/BEAR before the live pipeline runs; win-streaks (pushes don't break them), a rank ladder from OBSERVER to MACRO SOVEREIGN keyed off real wins, a beginner direction strip, and a public accuracy leaderboard.
-- **🕰️ Time Machine with Prophecy mode** — scrub every historical print (zero lookahead, honest stand-downs); flip on Prophecy mode and the verdicts hide until you call each print yourself — a pure calibration game against the machine.
-- **Credits only after real login** — Google (server-verified) or wallet signature (EIP-6963 → nonce → `personal_sign` → EIP-191 recovery) grants 1,000 credits; guest passes browse everything but hold 0. Connecting a wallet *is* authentication here, not address decoration.
-- **Dual-key Gemini pool** — two API keys with automatic rotation on quota errors across all three AI engines (agentic → debate → single-call); the pipeline no longer halts on a daily 429. `/api/diag` reports which key is active.
-- **Fire Live Run from the desk** — the portfolio's trade modal triggers the real pipeline (shared 20s cooldown), so anyone can watch a print become a verdict, a risk check, and an order.
-
-<details>
-<summary><b>🌊 Wave 3 / 3.5 — the real-engine foundation (click to expand)</b></summary>
-
-## 🌊 Wave 3 — What's new
-
-- **Real engine, zero mocks** — every fabricated dashboard value was hunted down and replaced with live backend data ([mocks.md](mocks.md) documents each one and its resolution).
-- **Agentic AI core** — Gemini now runs a transparent tool-use loop (surprise engine, catalyst corpus, ETF flows, regime, risk gates are its tools); the tool-call trace streams live to the terminal. Falls back safely to the single-call engine.
-- **Bull/Bear/Synthesiser debate** — every print is argued three ways; the verdict ships with dissent and corpus citations.
-- **Macro-catalyst corpus** — historical CPI/NFP/PCE/PPI/FOMC prints seeded from SoSoValue history, tagged with surprise z-scores, regime labels, and real BTC/ETH forward returns (+1d/+3d/+7d/+30d). `POST /api/corpus/seed`, `GET /api/corpus`.
-- **Verifiable track record** — `/track`: dated theses with signal IDs, HIT/STOP/DRIFT outcome resolution, counterfactual curve (MARA vs buy-and-hold vs did-nothing), corpus backtest with Sharpe/Sortino/maxDD/Monte-Carlo VaR (and the Harvey-&-Liu 50%-discounted Sharpe, honestly).
-- **35 SoSoValue endpoints** across all 9 modules (was 11), TTL-cached for the 20 req/min budget, live-probed on `/diag`.
+### Phase 1 · The engine
+- **Agentic AI core** — Gemini runs a transparent tool-use loop (surprise engine, catalyst corpus, ETF flows, regime, risk gates are its tools); the tool-call trace streams live to the terminal. Falls back safely to a single-call engine, and a bull/bear/synthesiser debate argues every print three ways before the verdict ships.
+- **Macro-catalyst corpus** — historical CPI/NFP/PCE/PPI/FOMC prints seeded from SoSoValue history, tagged with surprise z-scores, regime labels, and real BTC/ETH forward returns (+1d/+3d/+7d/+30d).
+- **35 SoSoValue endpoints** across all 9 modules, TTL-cached for the 20 req/min budget, live-probed on `/api/diag`.
 - **Regime-adaptive risk + macro circuit breaker** — BULL_QUIET…CRASH classification scales position size, stops, and the conviction floor; a pre-event window de-risks around CPI/FOMC/NFP.
 - **`mcp-mara`** — an 8-tool Model Context Protocol server so any AI client (Claude Desktop, Cursor, VS Code) can call MARA's calendar, corpus, conviction, risk state, track record, trade simulator, and (operator-gated) real execution.
-- **Proof surfaces** — `/diag` (live integration proof with latency), `/track`, `/healthz` + GitHub Actions keep-alive, Neon Postgres snapshot persistence for Render's ephemeral disk.
-- **"Amber Phosphor" design system (Wave 3.5)** — a dealing-desk instrument look: molten amber phosphor + ember coral on warm oil-black, bone text, Instrument Serif editorial display, custom reticle cursor, phosphor scrollbars on both axes, corner-bracket panels, CRT scanlines. The landing keeps the scroll-drawn ECG pipeline narrative, live SoDEX ticker tape and count-up proof metrics from `/api/diag`.
-- **Accounts + MARA credits (Wave 3.5)** — sign in with Google (server-verified ID token), any browser wallet (EIP-6963 discovery → nonce → `personal_sign` → server-side EIP-191 recovery), or a one-click guest pass. New accounts get 1,000 credits (guests 400) in an append-only ledger.
-- **⚔️ Signal Duel (`/duel`)** — stake credits on BULL or BEAR before the agent speaks; the REAL pipeline (live Gemini tool calls, live data, on-chain attestation) resolves your duel over the WebSocket. Win pays 2×, NEUTRAL pushes, a pipeline failure refunds your stake. Public leaderboard tracks accuracy vs the agent.
-- **🕰️ Time Machine (`/replay`)** — scrub 100+ real historical macro prints through MARA's decision logic with **zero lookahead** (early prints honestly report "insufficient history"); real BTC forward returns, regime-sized hypothetical P&L, autoplay + equity curve. Deterministic and free — no LLM calls.
-- **Beginner onboarding** — a 5-step walkthrough on first visit (re-open anytime via the "?" button).
-- **Telegram broadcast** — every signal (including NO_TRADE passes) posts to the channel; wins and losses alike.
-- **Launch video script** — [script.md](script.md): a 90-second (with 60s cut) shot-by-shot script where every frame is a real capture.
 
-</details>
+### Phase 2 · Identity & play
+- **"Amber Phosphor" design system** — a dealing-desk instrument look: molten amber phosphor + ember coral on warm oil-black, Instrument Serif editorial display, custom reticle cursor, CRT scanlines.
+- **Accounts + MARA credits** — sign in with Google (server-verified ID token), any browser wallet (EIP-6963 → nonce → `personal_sign` → server-side EIP-191 recovery), or a guest pass. Real logins earn 1,000 credits in an append-only ledger; connecting a wallet *is* authentication here, not address decoration.
+- **⚔️ Signal Duel (`/duel`)** — stake credits on BULL or BEAR before the agent speaks; the live pipeline resolves your duel over the WebSocket. Win pays 2×, NEUTRAL pushes, a pipeline failure refunds your stake. Win-streaks, a rank ladder from OBSERVER to MACRO SOVEREIGN, and a public accuracy leaderboard.
+- **🕰️ Time Machine (`/replay`)** — scrub two years of real macro prints through MARA's decision logic with **zero lookahead** (early prints honestly report "insufficient history"); flip on Prophecy mode and the verdicts hide until you call each print yourself.
+
+### Phase 3 · The frontend takeover
+- **A frontend people can steal from** — the deployed app is `MARA/`: a Next.js 15 spatial interface (d3 guilloche fields, a three.js monetary core, magnetic cursor) where **the ambience itself is market data**: the background glow's intensity is real 30-day BTC vol and its temperature is the real trend direction, polled from the engine's regime classifier.
+- **Every number traces to the engine** — the landing's meters are the live regime, the pulse cards are real decisions, the terminal streams real `agent_trace` steps, the portfolio desk shows real SoDEX positions, probes, equity and the real kill switch.
+- **Dual-key Gemini pool** — automatic key rotation on quota errors across all three AI engines; the pipeline doesn't halt on a daily 429.
+- **Fire Live Run from the desk** — the portfolio's trade modal triggers the real pipeline (shared 20s cooldown), so anyone can watch a print become a verdict, a risk check, and an order.
+
+### Phase 4 · Proof, public
+- **🛡️ Proof of Edge (`/edge`)** — a four-strategy gauntlet run over the corpus with zero lookahead: MARA's full policy vs a no-restraint counterfactual vs a naive z-chaser vs buy-and-hold. Includes the stand-down ledger (every trade MARA *refused*, with reasons), a per-regime honesty table, and Monte-Carlo VaR. The page links straight to the chain and the raw JSON so you don't have to take its word.
+- **⛓️ Attestation on public ValueChain testnet** — `MARAAttestation` live at [`0x8BF2…1B29`](https://testnet.sodex.com/explorer/address/0x8BF2520742CCb4101f28C216fF564A221bba1B29) (chainId 138565); every verdict's keccak256 hash is batched on-chain. Operator gas was bridged via a signed SoDEX **spot→EVM withdrawal** — the same EIP-712 machinery that places orders.
+- **Portfolio data plane** — signed venue reads (`/api/account`: perps balance, positions, orders, spot), SoSoValue US spot-ETF daily flows, and the quant tab (backtest incl. the Harvey-Liu 50%-discounted Sharpe).
+
+### Phase 5 · The engagement layer
+- **🎰 The Arcade** — PULSE (BTC direction, 5-min settle) and OVER/UNDER (±0.10% band): strike and settle are live SoDEX marks stored on every bet — the market is the dice, never `Math.random`. Exact tie voids and refunds.
+- **🤖 Bidirectional Telegram deck** — `/start` opens a real MARA account (500 CR, same ledger as the web), then `/status /regime /next /price /bet /mybets /leaderboard /claim` — and admin-gated `/kill` & `/resume`: the actual kill switch from your pocket.
+- **🗣 Gemini concierge** — a floating chat grounded in the live regime, latest verdict and kill state; 3 free questions, 100-word server-capped answers, premium unlock with credits.
+- **Community layer** — feedback that lands in the operator's Telegram, referral links (+250 CR both sides), and The Floor: a strategy board with a 24h retention guarantee and 3 posts/day per operator.
+- **SAFE MODE** — the kill switch is a product state: banner with reason and timestamp, duels and arcade lock, Telegram broadcast, one-press reset.
+
+### Phase 6 · Hardening & market microstructure
+- **Durability** — WAL-checkpointed Neon snapshots, Supabase durable store for community data (PostgREST dual-write with graceful fallback), transactional bet/duel settlements (a crash can't strand or double-pay), reconnect-forever exchange WebSocket, and attestation health alerts pushed to every dashboard + the operator's Telegram.
+- **📈 Rolling ticker tape** — every SoDEX perps symbol, spot pair and SSI index in one marquee across the app.
+- **Depth & Tape desk tab** — the venue's real order book (mid/spread) and time-and-sales prints; **Sector Spotlight** (24h sector moves + dominance) and **SSI X-Ray** (click any index for its real constituents and weights).
+- **🎁 Daily Ration** — a server-enforced daily credit claim with a streak multiplier, on web and Telegram alike, plus the Credit Kings leaderboard.
 
 MARA is a full-stack, autonomous macro-event trading and portfolio rotation system. It detects high-impact macro releases (such as CPI, Nonfarm Payrolls, and FOMC rate decisions) via a **dual-path scanner**, scores their crypto-market impact using **statistical surprise models + Gemini AI**, checks strict **risk management gates**, and executes **dual-leg trades** (BTC perpetual hedges + spot SSI index rotations) on the **SoDEX testnet** using custom **EIP-712 cryptographic signatures**.
 
@@ -232,6 +237,13 @@ The backend Hono server exposes the following REST routes:
 | **POST**| `/api/duel/start` | Stake credits on BULL/BEAR; the live pipeline resolves the duel. |
 | **GET** | `/api/duel/mine` · `/api/duel/leaderboard` | Your duel record; public leaderboard vs the agent. |
 | **GET** | `/api/replay/events` · `/api/replay?event_type=CPI` | Time Machine: no-lookahead corpus replay timelines. |
+| **GET** | `/api/edge` | Proof of Edge: the four-strategy no-lookahead gauntlet + stand-down ledger + MC VaR. |
+| **GET** | `/api/account` · `/api/etf` · `/api/klines` · `/api/indices` · `/api/treasuries` | Signed venue reads, US spot-ETF flows, real candles, SSI indices, BTC treasuries. |
+| **GET** | `/api/ticker` · `/api/depth` · `/api/tape` · `/api/sectors` · `/api/indices/:t/constituents` | Ticker tape, live order book, time & sales, sector spotlight, SSI X-Ray. |
+| **GET/POST** | `/api/arcade` · `/api/arcade/bet` · `/api/arcade/mine` | The Arcade: config + stats, place a bet on live marks, your bets. |
+| **GET/POST** | `/api/chat` · `/api/chat/quota` · `/api/chat/unlock` | Gemini concierge: grounded answers, quota, premium unlock. |
+| **GET/POST** | `/api/claim` · `/api/leaderboard/credits` · `/api/comments` · `/api/feedback` · `/api/referral` | Daily Ration, Credit Kings, The Floor, support requests, referral links. |
+| **GET** | `/api/evm/balance?address=0x…` | Any wallet's native SOSO on ValueChain via `eth_getBalance`. |
 | **GET** | `/api/regime` · `/api/markets` · `/api/ssi` · `/api/diag` · `/api/track` · `/api/backtest` | Live regime + breaker, tickers, SSI state, integration diagnostics, track record, backtest. |
 
 ---
@@ -242,7 +254,7 @@ MARA has been architected to hit every criteria and bonus category in the judgin
 
 | Criteria | Category | MARA Implementation | Status |
 | :--- | :--- | :--- | :--- |
-| **Genuine SoSoValue API** | **Required** | Uses **11 different endpoints** for macro tracking, news scanning, price feed calculations, and smart index allocations. | **YES** |
+| **Genuine SoSoValue API** | **Required** | Uses **35+ endpoints across all 9 modules** — macro calendar/history, news, currencies, ETFs, indices, crypto-stocks, sector data — live-probed on `/api/diag`. | **YES** |
 | **Clear Use Case** | **Required** | Focuses on high-impact macro data releases that trigger short-term directional perps hedges and spot index reallocations. | **YES** |
 | **Real User Value** | **Required** | Automates a complex workflow that typically requires an analyst, risk manager, portfolio manager, and execution trader. | **YES** |
 | **Complete Flow** | **Required** | End-to-end from live data ingest -> AI reasoning -> risk filtering -> on-chain execution. | **YES** |
@@ -260,7 +272,7 @@ MARA has been architected to hit every criteria and bonus category in the judgin
 
 ## ⛓️ On-Chain Attestation Layer (`mara-attestation`)
 
-MARA uses a Solidity smart contract on the ValueChain testnet to record an immutable audit trail of its trading decisions. This ensures that the agent's historical performance and reasoning cannot be tampered with.
+MARA uses a Solidity smart contract on the **public ValueChain testnet** to record an immutable audit trail of its trading decisions — live at [`0x8BF2520742CCb4101f28C216fF564A221bba1B29`](https://testnet.sodex.com/explorer/address/0x8BF2520742CCb4101f28C216fF564A221bba1B29) (chainId 138565). This ensures that the agent's historical performance and reasoning cannot be tampered with.
 
 ### Contract Features
 - **Immutable Decisions**: Stores the keccak256 hash of every trade decision, conviction level, and action.
@@ -287,12 +299,12 @@ MARA uses a Solidity smart contract on the ValueChain testnet to record an immut
 
 ## ✅ Submission Checklist
 
-- [x] **SoSoValue API**: 11 endpoints integrated (Macro, News, Indices, Market Data).
-- [x] **SoDEX Integration**: EIP-712 signing for both Perps and Spot markets.
-- [x] **AI Decision Engine**: Gemini AI-powered conviction analysis.
-- [x] **Risk Management**: ATR-based sizing, drawdown monitoring, and kill switch.
-- [x] **Real-Time Dashboard**: WebSocket-powered "OP-Central" UI.
-- [x] **Audit Trail**: On-chain attestation for every decision.
+- [x] **SoSoValue API**: 35+ endpoints across all 9 modules (Macro, News, Currencies, ETFs, Indices, Crypto-stocks, Sectors).
+- [x] **SoDEX Integration**: EIP-712 signing for Perps, Spot, and spot→EVM asset transfers.
+- [x] **AI Decision Engine**: Gemini agentic tool-use loop + debate + structured fallback, dual-key pool.
+- [x] **Risk Management**: ATR-based sizing, regime-adaptive gates, drawdown monitoring, kill switch with SAFE MODE.
+- [x] **Real-Time Product**: 7-route Next.js terminal + WebSocket cognition stream + Telegram deck.
+- [x] **Audit Trail**: On-chain attestation live on public ValueChain testnet ([explorer](https://testnet.sodex.com/explorer/address/0x8BF2520742CCb4101f28C216fF564A221bba1B29)).
 - [x] **Documentation**: Complete setup instructions and architecture overview.
 
 ---

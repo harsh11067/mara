@@ -53,9 +53,9 @@ export function TickerTape() {
   );
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[80] h-7 bg-background/90 backdrop-blur-md border-t border-glass-border overflow-hidden pointer-events-none select-none">
+    <div className="mara-tape-bar fixed bottom-0 left-0 right-0 z-[80] h-7 bg-background/90 backdrop-blur-md border-t border-glass-border overflow-hidden pointer-events-none select-none">
       <div
-        className="flex items-center h-full w-max"
+        className="mara-tape-track flex items-center h-full w-max"
         style={{ animation: `mara-tape ${duration}s linear infinite` }}
       >
         {items.map(cell)}
