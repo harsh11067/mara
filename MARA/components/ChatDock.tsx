@@ -79,7 +79,7 @@ export function ChatDock() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="MARA Concierge"
-        className="fixed bottom-6 right-6 z-[90] w-12 h-12 border border-amber/40 bg-background/90 backdrop-blur-md text-amber flex items-center justify-center hover:bg-amber/10 transition-colors shadow-lg shadow-black/40"
+        className="fixed bottom-10 right-6 z-[90] w-12 h-12 border border-amber/40 bg-background/90 backdrop-blur-md text-amber flex items-center justify-center hover:bg-amber/10 transition-colors shadow-lg shadow-black/40"
       >
         {open ? <X className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
       </button>

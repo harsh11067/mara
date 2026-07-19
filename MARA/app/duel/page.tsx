@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import { Swords, TrendingUp, TrendingDown, Trophy, Flame, ChevronRight, HelpCircle } from 'lucide-react';
@@ -58,6 +58,18 @@ export default function DuelPage() {
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
   const activeDuelId = useRef<string | null>(null);
 
+  // Declared before any effect that references it (no use-before-define).
+  const loadHistory = useCallback(async () => {
+    try {
+      const [m, l] = await Promise.all([
+        session.user ? duelApi.mine() : Promise.resolve(null),
+        duelApi.leaderboard(),
+      ]);
+      if (m) setMine(m.duels);
+      setBoard(l.leaderboard);
+    } catch { /* backend offline */ }
+  }, [session.user]);
+
   useEffect(() => {
     const cleanup = createWebSocket((msg: WsMessage) => {
       if (msg.type === 'duel_result') {
@@ -73,17 +85,6 @@ export default function DuelPage() {
     return cleanup;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const loadHistory = async () => {
-    try {
-      const [m, l] = await Promise.all([
-        session.user ? duelApi.mine() : Promise.resolve(null),
-        duelApi.leaderboard(),
-      ]);
-      if (m) setMine(m.duels);
-      setBoard(l.leaderboard);
-    } catch { /* backend offline */ }
-  };
 
   useEffect(() => {
     void loadHistory();

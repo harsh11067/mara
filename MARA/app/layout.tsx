@@ -6,6 +6,7 @@ import { CustomCursor } from '@/components/CustomCursor';
 import { EnvironmentProvider } from '@/components/context/EnvironmentContext';
 import { Onboarding } from '@/components/Onboarding';
 import { ChatDock } from '@/components/ChatDock';
+import { TickerTape } from '@/components/TickerTape';
 
 const instrument = Instrument_Serif({
   weight: '400',
@@ -38,6 +39,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
           <CustomCursor />
           <Onboarding />
           <ChatDock />
+          <TickerTape />
           {children}
         </EnvironmentProvider>
       </body>

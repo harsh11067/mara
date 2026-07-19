@@ -302,13 +302,13 @@ export default function LandingPage() {
       </section>
 
       {/* 07 Play — the two arenas */}
-      <section className="relative py-32 px-12 md:px-24">
+      <section className="relative pt-60 pb-32 px-12 md:px-24 mt-36">
         <div className="max-w-[1600px] mx-auto">
           <div className="font-mono text-[10px] tracking-[0.4em] text-amber uppercase mb-8">07 — The Arena</div>
-          <h2 className="font-display text-[6vw] leading-[0.9] tracking-tight mb-20">
+          <h2 className="font-display text-[5vw] leading-[1.05] tracking-tight pb-6 mb-24 md:mb-32">
             Don&apos;t just watch it. <span className="text-muted italic">Play it.</span>
           </h2>
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8 mt-12">
             <Link href="/duel">
               <motion.div
                 className="border border-amber/30 bg-background p-14 relative overflow-hidden group h-full"

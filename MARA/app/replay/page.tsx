@@ -14,10 +14,13 @@ type Guess = 'BULL' | 'BEAR' | 'NEUTRAL';
 export default function ReplayPage() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [family, setFamily] = useState<string>('CPI');
-  const [timeline, setTimeline] = useState<ReplayTimeline | null>(null);
+  // Timeline keyed by family: `loading` is derived, so switching families
+  // never needs a synchronous setState in the effect body (kickup §7A).
+  const [timelineRes, setTimelineRes] = useState<{ key: string; data: ReplayTimeline | null } | null>(null);
+  const timeline = timelineRes && timelineRes.key === family ? timelineRes.data : null;
+  const loading = timelineRes?.key !== family;
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   // ── Prophecy mode (predict-before-reveal calibration game) ────────────────
   const [prophecy, setProphecy] = useState(false);
@@ -36,15 +39,15 @@ export default function ReplayPage() {
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    setPlaying(false);
+    let stale = false;
     void replayApi.timeline(family).then((t) => {
-      setTimeline(t);
+      if (stale) return;
+      setTimelineRes({ key: family, data: t });
       setIdx(Math.max(0, t.prints.length - 1));
-      setLoading(false);
       setRevealed(!prophecy);
       setGuess(null);
-    }).catch(() => setLoading(false));
+    }).catch(() => { if (!stale) setTimelineRes({ key: family, data: null }); });
+    return () => { stale = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [family]);
 
@@ -191,7 +194,7 @@ export default function ReplayPage() {
           {(families.length > 0 ? families : [{ event_type: family, n: 0, first: '', last: '' }]).map((f) => (
             <button
               key={f.event_type}
-              onClick={() => setFamily(f.event_type)}
+              onClick={() => { setPlaying(false); setFamily(f.event_type); }}
               className={`px-5 py-2.5 border font-mono text-xs tracking-[0.2em] uppercase transition-colors ${family === f.event_type ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground hover:border-foreground/30'}`}
             >
               {f.event_type}{f.n ? ` · ${f.n}` : ''}
@@ -201,7 +204,7 @@ export default function ReplayPage() {
 
         {loading || !timeline || !print ? (
           <div className="border border-glass-border p-16 text-center font-mono text-[11px] text-muted tracking-widest uppercase">
-            {loading ? 'Rewinding the corpus…' : 'No prints in this family yet.'}
+            {loading ? 'Rewinding the corpus…' : timelineRes?.data === null ? 'Backend unreachable — try again.' : 'No prints in this family yet.'}
           </div>
         ) : (
           <>

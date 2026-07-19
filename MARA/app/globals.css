@@ -72,3 +72,9 @@
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted);
 }
+
+/* Wave 7: rolling ticker tape (TickerTape.tsx) */
+@keyframes mara-tape {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}

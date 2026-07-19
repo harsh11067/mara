@@ -114,6 +114,10 @@ async function pushSnapshot(force = false): Promise<void> {
     if (!force && version === lastDataVersion) return; // nothing changed
     lastDataVersion = version;
 
+    // WAL mode keeps recent transactions in mara.db-wal; db.serialize() only
+    // captures the main file. Checkpoint first or the snapshot silently
+    // rolls back everything still in the WAL (kickup §7B).
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* busy — snapshot still consistent, just older */ }
     const bytes = db.serialize();
     await ensureTable();
     await getPool().query('INSERT INTO mara_snapshots (bytes) VALUES ($1)', [bytes]);

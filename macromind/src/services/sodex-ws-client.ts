@@ -274,13 +274,17 @@ export class SoDEXWebSocketClient {
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      logger.error('SoDEX WebSocket max reconnect attempts reached — giving up');
-      return;
-    }
+    // Never give up (kickup §7C): an exchange outage longer than the old
+    // 10-attempt window must not permanently desync positions. Backoff is
+    // capped; past the old threshold we keep retrying at the cap and log
+    // at error level so the outage is visible.
     const delay = RECONNECT_DELAY_MS * Math.min(2 ** this.reconnectAttempts, 16);
     this.reconnectAttempts++;
-    logger.info(`SoDEX WebSocket reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    if (this.reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+      logger.error(`SoDEX WebSocket still down — retrying in ${delay}ms (attempt ${this.reconnectAttempts}, will retry forever)`);
+    } else {
+      logger.info(`SoDEX WebSocket reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    }
     setTimeout(() => this.connect(), delay);
   }
 }

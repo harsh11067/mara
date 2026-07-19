@@ -24,6 +24,7 @@ import { getDb } from '../store/db.js';
 import { config } from '../config.js';
 import { findOrCreateUser, creditsBalance, type User } from '../api/auth.js';
 import { placeArcadeBet, myArcadeBets, ARCADE_GAMES, ARCADE_MIN_STAKE, ARCADE_MAX_STAKE } from '../games/arcade.js';
+import { performDailyClaim, claimState } from '../api/community.js';
 import { activateKillSwitch, resetKillSwitch, isKillSwitchActive } from '../executor/kill-switch.js';
 import { classifyRegime } from '../risk/regime.js';
 import { SoSoValueClient, BTC_CURRENCY_ID } from '../services/sosovalue-client.js';
@@ -98,6 +99,7 @@ async function cmdStart(chatId: number, name: string): Promise<void> {
     `/price — live SoDEX marks`,
     `/bet up 50 — 5-min BTC direction bet`,
     `/bet over 50 — ±0.10% volatility bet`,
+    `/claim — daily credit ration (streak bonus)`,
     `/mybets /credits /leaderboard`,
     ``,
     `Web terminal: https://mara-neon.vercel.app`,
@@ -179,6 +181,18 @@ async function cmdCredits(chatId: number, name: string): Promise<void> {
     `💳 <b>${creditsBalance(user.id)} CR</b>`,
     ...ledger.map((l) => `· ${l.delta >= 0 ? '+' : ''}${l.delta} — ${l.reason}`),
   ].join('\n'));
+}
+
+async function cmdClaim(chatId: number, name: string): Promise<void> {
+  const user = tgUser(chatId, name);
+  const res = performDailyClaim(user.id);
+  if (res.ok) {
+    await tgSend(chatId, `🎁 <b>Daily ration claimed: +${res.amount} CR</b> (streak ${res.streak}🔥)\nBalance: ${creditsBalance(user.id)} CR`);
+  } else {
+    const st = claimState(user.id);
+    const hrs = st.nextClaimAt ? Math.max(1, Math.ceil((st.nextClaimAt - Date.now()) / 3600_000)) : 20;
+    await tgSend(chatId, `⏳ Already claimed — next ration in ~${hrs}h (+${st.nextAmount} CR waiting, streak ${st.streak}).`);
+  }
 }
 
 async function cmdBet(chatId: number, name: string, args: string[]): Promise<void> {
@@ -275,6 +289,7 @@ async function handleMessage(msg: NonNullable<TgUpdate['message']>): Promise<voi
     case '/next': return cmdNext(chatId);
     case '/price': return cmdPrice(chatId);
     case '/credits': return cmdCredits(chatId, name);
+    case '/claim': return cmdClaim(chatId, name);
     case '/bet': return cmdBet(chatId, name, args);
     case '/mybets': return cmdMyBets(chatId, name);
     case '/leaderboard': return cmdLeaderboard(chatId);

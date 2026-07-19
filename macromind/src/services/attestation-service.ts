@@ -67,6 +67,47 @@ export class AttestationService {
   private identityVerified = false;
   private onChainOperator  = '';
 
+  // Degradation health (kickup §7D): failures were only logged before —
+  // now they're counted, surfaced via getHealth(), and pushed through an
+  // alert callback (WS broadcast + operator Telegram) after 3 consecutive.
+  private consecutiveFailures = 0;
+  private lastFlushError: string | null = null;
+  private lastFlushSuccessAt: number | null = null;
+  private alertCb: ((message: string) => void) | null = null;
+  private alertFired = false;
+
+  /** Register the operator-alert sink (wired to WS broadcast + Telegram in index.ts). */
+  onDegraded(cb: (message: string) => void): void { this.alertCb = cb; }
+
+  getHealth(): { enabled: boolean; degraded: boolean; consecutiveFailures: number; lastError: string | null; lastSuccessAt: number | null } {
+    return {
+      enabled: this.enabled,
+      degraded: !this.enabled || this.consecutiveFailures >= 3,
+      consecutiveFailures: this.consecutiveFailures,
+      lastError: this.lastFlushError,
+      lastSuccessAt: this.lastFlushSuccessAt,
+    };
+  }
+
+  private recordFlushSuccess(): void {
+    if (this.alertFired && this.alertCb) this.alertCb('✅ Attestation recovered — on-chain writes flowing again.');
+    this.consecutiveFailures = 0;
+    this.lastFlushError = null;
+    this.lastFlushSuccessAt = Date.now();
+    this.alertFired = false;
+  }
+
+  private recordFlushFailure(message: string): void {
+    this.consecutiveFailures++;
+    this.lastFlushError = message.slice(0, 200);
+    if (this.consecutiveFailures >= 3 && !this.alertFired) {
+      this.alertFired = true;
+      const alert = `⛔ ATTESTATION DEGRADED — ${this.consecutiveFailures} consecutive on-chain write failures (${this.lastFlushError}). Check ValueChain RPC + operator gas.`;
+      logger.error(alert);
+      this.alertCb?.(alert);
+    }
+  }
+
   // Debounce window: write to chain ~3s after the last decision. Fast enough to
   // see the on-chain counter increment live in a demo, while still batching
   // bursts of decisions into a single transaction.
@@ -259,11 +300,13 @@ export class AttestationService {
         await tx.wait();
         logger.info(`Batch of ${batch.length} decisions attested on-chain`, { txHash: tx.hash });
       }
+      this.recordFlushSuccess();
     } catch (err: any) {
       // Re-queue on failure (contract rejected duplicates are silently dropped by the contract itself)
       if (!err?.message?.includes('AlreadyAttested')) {
         logger.error('Attestation flush failed, re-queuing', { err: err?.message, count: batch.length });
         this.queue.unshift(...batch);
+        this.recordFlushFailure(String(err?.message ?? err));
       }
     }
   }

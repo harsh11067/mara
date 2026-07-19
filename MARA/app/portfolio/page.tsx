@@ -7,6 +7,7 @@ import { useEnvironment } from '@/components/context/EnvironmentContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { AccountMenu } from '@/components/AccountMenu';
 import { openOnboarding } from '@/components/Onboarding';
+import { useSession } from '@/lib/session';
 import {
   api, portfolioApi, createWebSocket, timeAgo,
   type BackendTrade, type BackendRisk, type BackendMarkets, type BackendNewsItem,
@@ -15,7 +16,7 @@ import {
   type BackendKlines, type BackendStatus,
 } from '@/lib/api';
 
-type DeskTab = 'positions' | 'exchange' | 'charts' | 'etf' | 'quant';
+type DeskTab = 'positions' | 'exchange' | 'market' | 'charts' | 'etf' | 'quant';
 
 interface LogRow { id: string; time: string; tag: string; text: string; tone: 'bull' | 'bear' | 'flat' }
 
@@ -45,10 +46,50 @@ export default function PortfolioPage() {
   const [trails, setTrails] = useState<Record<string, number[]>>({});
   const [chartSymbol, setChartSymbol] = useState('BTC-USD');
   const [chartInterval, setChartInterval] = useState<'15m' | '1h' | '4h' | '1d'>('1h');
-  const [chart, setChart] = useState<BackendKlines | null>(null);
+  // Keyed by symbol:interval so switching params shows the loading state via
+  // derivation instead of a synchronous setChart(null) in the effect body
+  // (kickup §7A cascading-render fix); also drops out-of-order responses.
+  const [chartRes, setChartRes] = useState<{ key: string; data: BackendKlines } | null>(null);
+  const chartKey = `${chartSymbol}:${chartInterval}`;
+  const chart = chartRes && chartRes.key === chartKey ? chartRes.data : null;
   const [indices, setIndices] = useState<Array<Record<string, unknown>>>([]);
   const [treasuries, setTreasuries] = useState<Array<Record<string, unknown>>>([]);
   const [status, setStatus] = useState<BackendStatus | null>(null);
+
+  // Wave 7: market microstructure (SoDEX depth + tape) and SoSoValue extras
+  const [mktSymbol, setMktSymbol] = useState('BTC-USD');
+  const [depth, setDepth] = useState<Awaited<ReturnType<typeof portfolioApi.depth>> | null>(null);
+  const [tape, setTape] = useState<Awaited<ReturnType<typeof portfolioApi.tape>> | null>(null);
+  const [sectors, setSectors] = useState<Array<{ name: string; changePct24h: number; marketcapDom: number }>>([]);
+  const [xray, setXray] = useState<{ ticker: string; constituents: Array<{ symbol: string; weight: number }> } | null>(null);
+  useEffect(() => {
+    if (deskTab !== 'market') return;
+    let stale = false;
+    const pull = () => {
+      void portfolioApi.depth(mktSymbol).then((d) => { if (!stale) setDepth(d); }).catch(() => {});
+      void portfolioApi.tape(mktSymbol).then((t) => { if (!stale) setTape(t); }).catch(() => {});
+    };
+    pull();
+    void portfolioApi.sectors().then((s) => { if (!stale) setSectors(s.sectors); }).catch(() => {});
+    const t = setInterval(pull, 10_000);
+    return () => { stale = true; clearInterval(t); };
+  }, [deskTab, mktSymbol]);
+
+  // Wave 7: the signed-in user's OWN wallet balance on ValueChain — the same
+  // eth_getBalance read MetaMask does, not the operator's account.
+  const session = useSession();
+  const myWallet = session.user?.walletAddress ?? null;
+  const [myBalance, setMyBalance] = useState<number | null>(null);
+  useEffect(() => {
+    if (!myWallet) { setMyBalance(null); return; }
+    let stale = false;
+    const pull = () => void portfolioApi.evmBalance(myWallet)
+      .then((r) => { if (!stale) setMyBalance(r.sosoNative); })
+      .catch(() => {});
+    pull();
+    const t = setInterval(pull, 30_000);
+    return () => { stale = true; clearInterval(t); };
+  }, [myWallet]);
 
   // Fire Live Run form
   const [runEvent, setRunEvent] = useState('CPI YoY');
@@ -171,8 +212,12 @@ export default function PortfolioPage() {
   // Chart tab data
   useEffect(() => {
     if (deskTab !== 'charts') return;
-    setChart(null);
-    void portfolioApi.klines(chartSymbol, chartInterval, 96).then(setChart).catch(() => {});
+    const key = `${chartSymbol}:${chartInterval}`;
+    let stale = false;
+    void portfolioApi.klines(chartSymbol, chartInterval, 96)
+      .then((data) => { if (!stale) setChartRes({ key, data }); })
+      .catch(() => {});
+    return () => { stale = true; };
   }, [deskTab, chartSymbol, chartInterval]);
 
   /** SVG path from real closes — used for ticker trails and the chart line. */
@@ -352,6 +397,33 @@ export default function PortfolioPage() {
                {risk ? `${risk.cumulativePnl >= 0 ? '+' : ''}${risk.cumulativePnl.toFixed(2)} cumulative P&L` : 'syncing'}
              </div>
           </div>
+
+          {/* Wave 7: the CONNECTED wallet's own testnet SOSO (eth_getBalance) */}
+          <div className="mara-glass p-4 shrink-0 bg-background/40">
+            <div className="text-[11px] text-muted tracking-widest uppercase mb-2">Your Wallet · ValueChain</div>
+            {myWallet ? (
+              <>
+                <div className="text-2xl text-foreground font-light tracking-tight">
+                  {myBalance != null
+                    ? <>{myBalance.toLocaleString(undefined, { maximumFractionDigits: 4 })} <span className="text-sm text-amber">SOSO</span></>
+                    : 'reading…'}
+                </div>
+                <div className="text-[11px] text-muted mt-0.5 font-mono truncate" title={myWallet}>
+                  {myWallet.slice(0, 8)}…{myWallet.slice(-6)} · live eth_getBalance
+                </div>
+                {myBalance === 0 && (
+                  <a href="https://testnet.sodex.com/faucet" target="_blank" rel="noreferrer"
+                    className="text-[11px] text-amber/80 hover:text-amber underline underline-offset-2">
+                    Empty — grab testnet SOSO from the faucet →
+                  </a>
+                )}
+              </>
+            ) : (
+              <div className="text-[11px] text-muted font-sans leading-relaxed">
+                Sign in with a wallet to see your own testnet SOSO here — the exact balance MetaMask shows, read live from the chain.
+              </div>
+            )}
+          </div>
         </aside>
 
         {/* Center */}
@@ -397,6 +469,7 @@ export default function PortfolioPage() {
                  {([
                    ['positions', risk ? `Agent Positions · ${risk.openPositions} open` : 'Agent Positions'],
                    ['exchange', 'Exchange · SoDEX'],
+                   ['market', 'Depth & Tape'],
                    ['charts', 'Charts'],
                    ['etf', 'ETF Flows'],
                    ['quant', 'Quant'],
@@ -507,6 +580,107 @@ export default function PortfolioPage() {
                </div>
              )}
 
+             {/* ── Market tab (Wave 7): the venue's REAL order book + tape + sectors ── */}
+             {deskTab === 'market' && (
+               <div className="flex-1 overflow-auto p-4 flex flex-col gap-5">
+                 <div className="flex flex-wrap items-center gap-2">
+                   {['BTC-USD', 'ETH-USD', 'SOL-USD'].map((s) => (
+                     <button key={s} onClick={() => setMktSymbol(s)}
+                       className={`text-[11px] tracking-widest uppercase px-3 py-1.5 border transition-colors ${mktSymbol === s ? 'border-amber/50 text-amber bg-amber/5' : 'border-glass-border text-muted hover:text-foreground'}`}>
+                       {s.replace('-USD', '')}
+                     </button>
+                   ))}
+                   {depth?.mid != null && (
+                     <span className="ml-auto text-[11px] font-mono text-muted tracking-widest uppercase">
+                       mid ${depth.mid.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+                       {depth.spread != null && <> · spread ${depth.spread.toLocaleString(undefined, { maximumFractionDigits: 1 })}</>}
+                     </span>
+                   )}
+                 </div>
+
+                 <div className="grid md:grid-cols-2 gap-5">
+                   {/* Depth ladder — live SoDEX order book, 10s refresh */}
+                   <div className="border border-glass-border bg-foreground/[0.01] p-4">
+                     <div className="text-[11px] text-muted tracking-widest uppercase mb-3">Order book · SoDEX perps (live)</div>
+                     {!depth ? (
+                       <div className="text-xs text-muted">reading the book…</div>
+                     ) : (
+                       <div className="grid grid-cols-2 gap-3 font-mono text-[11px]">
+                         <div>
+                           <div className="text-olive/70 uppercase tracking-widest mb-1.5">Bids</div>
+                           {depth.bids.slice(0, 10).map(([p, q], i) => {
+                             const maxQ = Math.max(...depth.bids.map((b) => b[1]), 0.0001);
+                             return (
+                               <div key={i} className="relative flex justify-between py-0.5">
+                                 <div className="absolute inset-y-0 right-0 bg-olive/10" style={{ width: `${(q / maxQ) * 100}%` }} />
+                                 <span className="relative text-olive">{p.toLocaleString()}</span>
+                                 <span className="relative text-muted">{q}</span>
+                               </div>
+                             );
+                           })}
+                         </div>
+                         <div>
+                           <div className="text-coral/70 uppercase tracking-widest mb-1.5">Asks</div>
+                           {depth.asks.slice(0, 10).map(([p, q], i) => {
+                             const maxQ = Math.max(...depth.asks.map((a) => a[1]), 0.0001);
+                             return (
+                               <div key={i} className="relative flex justify-between py-0.5">
+                                 <div className="absolute inset-y-0 left-0 bg-coral/10" style={{ width: `${(q / maxQ) * 100}%` }} />
+                                 <span className="relative text-coral">{p.toLocaleString()}</span>
+                                 <span className="relative text-muted">{q}</span>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </div>
+                     )}
+                   </div>
+
+                   {/* The tape — every real print on the venue */}
+                   <div className="border border-glass-border bg-foreground/[0.01] p-4">
+                     <div className="text-[11px] text-muted tracking-widest uppercase mb-3">Time & sales · real fills</div>
+                     {!tape ? (
+                       <div className="text-xs text-muted">reading the tape…</div>
+                     ) : tape.trades.length === 0 ? (
+                       <div className="text-xs text-muted font-sans">No prints yet — a quiet testnet book, honestly shown.</div>
+                     ) : (
+                       <div className="font-mono text-[11px] space-y-0.5 max-h-72 overflow-y-auto">
+                         {tape.trades.map((tr) => (
+                           <div key={tr.id} className="flex justify-between gap-3">
+                             <span className="text-muted">{new Date(tr.ts).toISOString().slice(11, 19)}</span>
+                             <span className={tr.side === 'BUY' ? 'text-olive' : 'text-coral'}>{tr.side}</span>
+                             <span className="text-foreground">${tr.price.toLocaleString()}</span>
+                             <span className="text-muted">{tr.qty}</span>
+                           </div>
+                         ))}
+                       </div>
+                     )}
+                   </div>
+                 </div>
+
+                 {/* Sector Spotlight — SoSoValue: where the market's weight sits */}
+                 {sectors.length > 0 && (
+                   <div className="border border-glass-border bg-foreground/[0.01] p-4">
+                     <div className="text-[11px] text-muted tracking-widest uppercase mb-3">Sector Spotlight · SoSoValue (24h)</div>
+                     <div className="space-y-1.5">
+                       {sectors.slice(0, 10).map((s) => (
+                         <div key={s.name} className="flex items-center gap-3 font-mono text-[11px]">
+                           <span className="w-24 text-foreground truncate">{s.name}</span>
+                           <div className="flex-1 h-2 bg-foreground/[0.04] relative">
+                             <div className="absolute inset-y-0 left-0 bg-amber/40" style={{ width: `${Math.min(100, s.marketcapDom * 4)}%` }} />
+                           </div>
+                           <span className="w-14 text-right text-muted">{s.marketcapDom.toFixed(1)}%</span>
+                           <span className={`w-16 text-right ${s.changePct24h > 0 ? 'text-olive' : s.changePct24h < 0 ? 'text-coral' : 'text-muted'}`}>
+                             {s.changePct24h > 0 ? '+' : ''}{s.changePct24h.toFixed(2)}%
+                           </span>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
+               </div>
+             )}
+
              {/* ── Charts tab: real SoDEX klines + SoSoValue indices/treasuries ── */}
              {deskTab === 'charts' && (
                <div className="flex-1 overflow-auto p-4 flex flex-col gap-5">
@@ -563,15 +737,41 @@ export default function PortfolioPage() {
 
                  {indices.length > 0 && (
                    <div>
-                     <div className="text-xs text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">SoSoValue SSI Indices</div>
+                     <div className="text-xs text-muted tracking-widest uppercase mb-2 border-b border-glass-border pb-1">SoSoValue SSI Indices · click one for the X-Ray</div>
                      <div className="flex flex-wrap gap-2">
-                       {indices.slice(0, 8).map((ix, i) => (
-                         <span key={i} className="border border-glass-border px-3 py-1.5 text-[11px] text-foreground">
-                           {String(ix.ticker ?? ix.name ?? '?')}
-                           {ix.price != null || ix.value != null ? <span className="text-amber ml-2">{String(ix.price ?? ix.value)}</span> : null}
-                         </span>
-                       ))}
+                       {indices.slice(0, 8).map((ix, i) => {
+                         const tick = String(ix.ticker ?? ix.name ?? '?');
+                         const active = xray?.ticker === tick.toLowerCase();
+                         return (
+                           <button key={i}
+                             onClick={() => {
+                               if (active) { setXray(null); return; }
+                               void portfolioApi.ssiXray(tick.toLowerCase()).then(setXray).catch(() => {});
+                             }}
+                             className={`border px-3 py-1.5 text-[11px] transition-colors ${active ? 'border-amber/60 text-amber bg-amber/5' : 'border-glass-border text-foreground hover:border-amber/40'}`}>
+                             {tick}
+                             {ix.price != null || ix.value != null ? <span className="text-amber ml-2">{String(ix.price ?? ix.value)}</span> : null}
+                           </button>
+                         );
+                       })}
                      </div>
+                     {/* SSI X-Ray (Wave 7): the index's REAL constituents + weights */}
+                     {xray && xray.constituents.length > 0 && (
+                       <div className="mt-3 border border-glass-border bg-foreground/[0.01] p-4">
+                         <div className="text-[11px] text-muted tracking-widest uppercase mb-2">{xray.ticker} composition (SoSoValue)</div>
+                         <div className="space-y-1">
+                           {xray.constituents.slice(0, 12).map((cst) => (
+                             <div key={cst.symbol} className="flex items-center gap-3 font-mono text-[11px]">
+                               <span className="w-32 text-foreground truncate uppercase">{cst.symbol}</span>
+                               <div className="flex-1 h-1.5 bg-foreground/[0.04] relative">
+                                 <div className="absolute inset-y-0 left-0 bg-amber/50" style={{ width: `${Math.min(100, cst.weight * 2)}%` }} />
+                               </div>
+                               <span className="w-14 text-right text-muted">{cst.weight.toFixed(2)}%</span>
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     )}
                    </div>
                  )}
 

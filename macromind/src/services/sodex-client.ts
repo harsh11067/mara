@@ -229,6 +229,17 @@ export class SoDEXClient {
     return normalizeOrderbook(raw as RawOrderbook);
   }
 
+  /** Recent public trades (the tape). Raw venue fields: t=id T=ts S=side p=price q=qty. */
+  async getPerpsTrades(symbol: string, limit = 30): Promise<Array<{ id: number; ts: number; side: 'BUY' | 'SELL'; price: number; qty: number }>> {
+    const res = await get<SodexEnvelope<Array<{ t: number; T: number; s: string; S: string; p: string; q: string }>>>(
+      `${this.base}/perps/markets/${encodeURIComponent(symbol)}/trades?limit=${limit}`,
+    );
+    const raw = unwrapData(res);
+    return Array.isArray(raw)
+      ? raw.map((r) => ({ id: r.t, ts: r.T, side: (r.S === 'BUY' ? 'BUY' : 'SELL') as 'BUY' | 'SELL', price: parseFloat(r.p), qty: parseFloat(r.q) }))
+      : [];
+  }
+
   async getPerpsKlines(symbol: string, params = { interval: '1h', limit: 14 }): Promise<Kline[]> {
     const qs = new URLSearchParams({ interval: params.interval, limit: String(params.limit) });
     const res = await get<SodexEnvelope<RawKline[]>>(

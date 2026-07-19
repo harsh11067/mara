@@ -248,6 +248,13 @@ function runMigrations(db: Database.Database): void {
       created_at  INTEGER NOT NULL
     );
 
+    -- Wave 7: Daily ration — one claim per 24h, streak grows the payout
+    CREATE TABLE IF NOT EXISTS daily_claims (
+      user_id       TEXT PRIMARY KEY REFERENCES users(id),
+      last_claim_at INTEGER NOT NULL,
+      streak        INTEGER NOT NULL DEFAULT 1
+    );
+
     -- Indices for fast lookups
     CREATE INDEX IF NOT EXISTS idx_events_date   ON events(date);
     CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);

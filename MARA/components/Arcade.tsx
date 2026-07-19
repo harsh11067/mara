@@ -8,8 +8,10 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gamepad2, Timer, Zap } from 'lucide-react';
-import { api, arcadeApi, createWebSocket, type ArcadeGame, type ArcadeBet, type WsMessage } from '@/lib/api';
+import { api, arcadeApi, communityApi, createWebSocket, type ArcadeGame, type ArcadeBet, type WsMessage } from '@/lib/api';
 import { useSession, setCredits } from '@/lib/session';
+
+type ClaimState = { claimable: boolean; streak: number; nextAmount: number; nextClaimAt: number | null };
 
 export function Arcade({ killSwitch: killSwitchProp }: { killSwitch?: boolean }) {
   const session = useSession();
@@ -21,7 +23,9 @@ export function Arcade({ killSwitch: killSwitchProp }: { killSwitch?: boolean })
   const [bets, setBets] = useState<ArcadeBet[]>([]);
   const [flash, setFlash] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [now, setNow] = useState(Date.now());
+  // Clock state starts at 0 (pure render) and is set post-mount by the tick
+  // effect — Date.now() during render breaks hydration idempotency.
+  const [now, setNow] = useState(0);
 
   const signedIn = session.user !== null;
   const userId = session.user?.id;
@@ -35,8 +39,30 @@ export function Arcade({ killSwitch: killSwitchProp }: { killSwitch?: boolean })
     if (signedIn) void arcadeApi.mine().then((r) => setBets(r.bets)).catch(() => {});
   }, [signedIn]);
 
+  // Daily Ration (Wave 7): server-enforced 24h claim with streak multiplier
+  const [claim, setClaim] = useState<ClaimState | null>(null);
+  const [claiming, setClaiming] = useState(false);
+  useEffect(() => {
+    if (!signedIn) { setClaim(null); return; }
+    void communityApi.claimStatus().then((r) => { if (!('error' in r && r.error)) setClaim(r); }).catch(() => {});
+  }, [signedIn]);
+  const doClaim = async () => {
+    if (claiming) return;
+    setClaiming(true);
+    const r = await communityApi.claim().catch(() => ({ error: 'Network error' } as const));
+    setClaiming(false);
+    if ('ok' in r && r.ok) {
+      if (r.credits !== undefined) setCredits(r.credits);
+      setFlash(`Daily ration claimed: +${r.amount} CR (streak ${r.streak})`);
+      setClaim({ claimable: false, streak: r.streak ?? 1, nextAmount: r.nextAmount ?? 0, nextClaimAt: r.nextClaimAt ?? null });
+    } else if ('error' in r && r.error) {
+      setFlash(r.error);
+    }
+  };
+
   // Tick for countdowns
   useEffect(() => {
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
@@ -92,6 +118,26 @@ export function Arcade({ killSwitch: killSwitchProp }: { killSwitch?: boolean })
       {killSwitch && (
         <div className="border border-coral/40 bg-coral/5 p-4 mb-6 font-mono text-xs text-coral tracking-widest uppercase">
           ⛔ SAFE MODE — kill switch active, arcade paused until the operator resets.
+        </div>
+      )}
+
+      {/* Daily Ration — server-enforced 24h claim, streak grows the payout */}
+      {signedIn && claim && (
+        <div className="mara-glass p-4 mb-6 flex flex-wrap items-center gap-4">
+          <Zap className="w-4 h-4 text-amber" />
+          <span className="font-mono text-[11px] text-muted tracking-[0.25em] uppercase">
+            Daily Ration{claim.streak > 0 && <> · streak {claim.streak}🔥</>}
+          </span>
+          {claim.claimable ? (
+            <button onClick={() => void doClaim()} disabled={claiming}
+              className="font-mono text-xs tracking-[0.2em] uppercase border border-amber/50 text-amber px-4 py-1.5 hover:bg-amber/10 transition-colors disabled:opacity-40">
+              Claim +{claim.nextAmount} CR
+            </button>
+          ) : (
+            <span className="font-mono text-[11px] text-muted">
+              next ration {claim.nextClaimAt ? `in ~${Math.max(1, Math.ceil((claim.nextClaimAt - Date.now()) / 3600_000))}h` : 'soon'} · +{claim.nextAmount} CR waiting
+            </span>
+          )}
         </div>
       )}
 
@@ -157,7 +203,7 @@ export function Arcade({ killSwitch: killSwitchProp }: { killSwitch?: boolean })
           </div>
           <div className="space-y-2">
             {bets.slice(0, 8).map((b) => {
-              const secsLeft = Math.max(0, Math.ceil((b.resolve_at - now) / 1000));
+              const secsLeft = now === 0 ? 0 : Math.max(0, Math.ceil((b.resolve_at - now) / 1000));
               return (
                 <div key={b.id} className="flex flex-wrap items-baseline gap-x-5 gap-y-1 font-mono text-xs border-b border-glass-border/40 pb-2 last:border-0">
                   <span className="text-foreground w-24">{b.game}</span>

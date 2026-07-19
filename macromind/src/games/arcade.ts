@@ -159,14 +159,23 @@ async function resolveDue(broadcast: Broadcast, telegramDm?: TelegramDm): Promis
     return;
   }
 
+  // Claim + payout are one transaction: a crash mid-resolution can never
+  // leave a bet marked settled without its payout (or pay twice) — kickup §3.7.
+  const db = getDb();
+  const settleTx = db.transaction((betId: string, outcome: string, payout: number, uid: string): boolean => {
+    const res = db.prepare(
+      "UPDATE arcade_bets SET settle_price = ?, outcome = ?, payout = ?, resolved_at = ? WHERE id = ? AND outcome = 'PENDING'",
+    ).run(settle, outcome, payout, Date.now(), betId);
+    if (res.changes !== 1) return false; // already settled by another pass
+    if (payout > 0) {
+      grantCredits(uid, payout, outcome === 'VOID' ? 'arcade_void' : 'arcade_win', betId);
+    }
+    return true;
+  });
+
   for (const bet of due) {
     const { outcome, payout } = settleOne(bet, settle);
-    if (payout > 0) {
-      grantCredits(bet.user_id, payout, outcome === 'VOID' ? 'arcade_void' : 'arcade_win', bet.id);
-    }
-    getDb().prepare(
-      'UPDATE arcade_bets SET settle_price = ?, outcome = ?, payout = ?, resolved_at = ? WHERE id = ?',
-    ).run(settle, outcome, payout, Date.now(), bet.id);
+    if (!settleTx(bet.id, outcome, payout, bet.user_id)) continue;
 
     const movePct = ((settle - bet.strike) / bet.strike) * 100;
     broadcast('arcade_result', {

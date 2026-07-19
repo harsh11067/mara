@@ -22,7 +22,7 @@ const STEPS: Array<{ tag: string; title: React.ReactNode; body: string }> = [
   },
   {
     tag: '04 — Rewind time',
-    title: <>Replay <em className="italic text-amber">a decade of prints</em>.</>,
+    title: <>Replay <em className="italic text-amber">two years of prints</em>.</>,
     body: 'TIME MACHINE scrubs through real historical releases and shows what MARA would have done with only the data available on that day — no lookahead. Early prints honestly say "not enough history." The P&L curve is computed from real forward BTC returns.',
   },
   {
@@ -37,16 +37,19 @@ export function Onboarding() {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && !localStorage.getItem('mara_onboarded')) {
-      setVisible(true);
-    }
+    // Runs post-hydration (server markup renders nothing), so flipping
+    // visibility here can't mismatch; storage access guarded for browsers
+    // that block it (private mode).
+    try {
+      if (!localStorage.getItem('mara_onboarded')) setVisible(true);
+    } catch { /* storage blocked — skip auto-open */ }
     const onOpen = () => { setStep(0); setVisible(true); };
     window.addEventListener('mara:onboarding', onOpen);
     return () => window.removeEventListener('mara:onboarding', onOpen);
   }, []);
 
   const close = () => {
-    localStorage.setItem('mara_onboarded', '1');
+    try { localStorage.setItem('mara_onboarded', '1'); } catch { /* storage blocked */ }
     setVisible(false);
   };
 

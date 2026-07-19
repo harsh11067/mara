@@ -22,6 +22,7 @@ import { startApiServer, broadcast } from './api/server.js';
 import { sodexWsClient } from './services/sodex-ws-client.js';
 import { attestationService } from './services/attestation-service.js';
 import { restoreFromNeon, startReplicator, stopReplicator } from './store/db-replicator.js';
+import { checkSupabase, sbInsert } from './store/supabase-store.js';
 import { startArcadeResolver, stopArcadeResolver } from './games/arcade.js';
 import { startTelegramDeck, stopTelegramDeck, tgSend } from './services/telegram-deck.js';
 
@@ -42,6 +43,17 @@ async function main(): Promise<void> {
   await restoreFromNeon();
   getDb(); // triggers schema migrations
   startReplicator();
+
+  // Supabase durable store (Wave 7): probe once at boot; when the tables
+  // exist, backfill any floor posts Supabase hasn't seen (idempotent upsert).
+  void checkSupabase().then((sb) => {
+    if (sb.tables['floor_posts']) {
+      const posts = getDb().prepare(
+        'SELECT id, user_id, name, body, created_at FROM comments ORDER BY created_at DESC LIMIT 200',
+      ).all() as Array<Record<string, unknown>>;
+      for (const p of posts) sbInsert('floor_posts', p);
+    }
+  });
 
   // ── 2. Init services ───────────────────────────────────────────────────────
   const sosoClient = new SoSoValueClient(config.sosovalue.apiKey, config.sosovalue.baseUrl);
@@ -214,6 +226,15 @@ async function main(): Promise<void> {
   sodexWsClient.start();     // live SoDEX position/order/balance feed
   startArcadeResolver(broadcast, tgSend);  // settles arcade bets vs live marks
   startTelegramDeck();       // bidirectional bot commands (long-poll)
+
+  // Attestation degradation is no longer silent (kickup §7D): after 3
+  // consecutive on-chain write failures every dashboard gets a WS alert and
+  // the operator gets a Telegram DM (when TELEGRAM_ADMIN_CHAT_ID is set).
+  attestationService.onDegraded((message) => {
+    broadcast('attestation_alert', { message, at: Date.now() });
+    const adminChat = process.env.TELEGRAM_ADMIN_CHAT_ID;
+    if (adminChat) void tgSend(adminChat, message);
+  });
 
   // Log the on-chain attestation status so it's obvious at boot.
   if (config.attestation.contractAddress && config.attestation.identityCoherent) {

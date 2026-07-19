@@ -44,18 +44,26 @@ function resolveDuel(duelId: string, userId: string, prediction: string, stake: 
   broadcast: (type: string, data: unknown) => void): void {
   let outcome: 'WIN' | 'LOSS' | 'PUSH';
   let payout = 0;
+  let reason = '';
   if (verdict === 'NEUTRAL') {
-    outcome = 'PUSH'; payout = stake;
-    grantCredits(userId, stake, 'duel_push', duelId);
+    outcome = 'PUSH'; payout = stake; reason = 'duel_push';
   } else if ((BULL_GROUP.has(verdict) && prediction === 'BULL') || (BEAR_GROUP.has(verdict) && prediction === 'BEAR')) {
-    outcome = 'WIN'; payout = stake * 2;
-    grantCredits(userId, payout, 'duel_win', duelId);
+    outcome = 'WIN'; payout = stake * 2; reason = 'duel_win';
   } else {
     outcome = 'LOSS'; payout = 0;
   }
-  getDb().prepare(
-    'UPDATE duels SET mara_verdict = ?, mara_confidence = ?, decision_id = ?, outcome = ?, payout = ?, resolved_at = ? WHERE id = ?',
-  ).run(verdict, confidence, decisionId, outcome, payout, Date.now(), duelId);
+  // Settle-row claim + payout in one transaction: a crash between them can
+  // never strand a resolved duel without its payout or pay one twice.
+  const db = getDb();
+  const settled = db.transaction((): boolean => {
+    const res = db.prepare(
+      "UPDATE duels SET mara_verdict = ?, mara_confidence = ?, decision_id = ?, outcome = ?, payout = ?, resolved_at = ? WHERE id = ? AND outcome = 'PENDING'",
+    ).run(verdict, confidence, decisionId, outcome, payout, Date.now(), duelId);
+    if (res.changes !== 1) return false;
+    if (payout > 0) grantCredits(userId, payout, reason, duelId);
+    return true;
+  })();
+  if (!settled) return; // already resolved (double-fire guard)
   broadcast('duel_result', {
     duelId, userId, prediction, stake, verdict, confidence, outcome, payout,
     credits: creditsBalance(userId),
@@ -114,9 +122,12 @@ export function duelRoutes(app: Hono, broadcast: (type: string, data: unknown) =
       })
       .catch((err) => {
         logger.error('Duel pipeline error — refunding stake', { error: String(err) });
-        grantCredits(user.id, stake, 'duel_refund', duelId);
-        getDb().prepare('UPDATE duels SET outcome = ?, payout = ?, resolved_at = ? WHERE id = ?')
-          .run('ERROR', stake, Date.now(), duelId);
+        const db = getDb();
+        db.transaction(() => {
+          const res = db.prepare("UPDATE duels SET outcome = ?, payout = ?, resolved_at = ? WHERE id = ? AND outcome = 'PENDING'")
+            .run('ERROR', stake, Date.now(), duelId);
+          if (res.changes === 1) grantCredits(user.id, stake, 'duel_refund', duelId);
+        })();
         broadcast('duel_result', {
           duelId, userId: user.id, prediction, stake, verdict: null, confidence: null,
           outcome: 'ERROR', payout: stake, credits: creditsBalance(user.id),

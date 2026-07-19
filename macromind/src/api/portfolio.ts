@@ -69,6 +69,22 @@ export function portfolioRoutes(app: Hono): void {
     }
   });
 
+  // ── Connected-wallet balance (Wave 7): any address's REAL native SOSO ──────
+  // Lets the desk show the signed-in user's own MetaMask balance, not just
+  // the operator's. Same eth_getBalance read, per-address 15s cache.
+  app.get('/api/evm/balance', async (c) => {
+    const address = (c.req.query('address') ?? '').trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return c.json({ error: 'address must be 0x…40 hex chars' }, 400);
+    const data = await globalCache.wrap(`evm:bal:${address.toLowerCase()}`, 15_000, async () => ({
+      address,
+      chainId: config.sodex.chainId,
+      rpc: config.attestation.rpcUrl || null,
+      sosoNative: await nativeSosoBalance(address),
+      fetchedAt: Date.now(),
+    }));
+    return c.json(data);
+  });
+
   // ── Real klines for price trails + the Charts tab (SoDEX public data) ──────
   app.get('/api/klines', async (c) => {
     const symbol = c.req.query('symbol') ?? 'BTC-USD';
@@ -94,6 +110,83 @@ export function portfolioRoutes(app: Hono): void {
     }
   });
 
+  // ── Rolling ticker tape (Wave 7): the ENTIRE live board in one call ────────
+  // Every SoDEX perps symbol + every spot pair + the SoSoValue SSI indices,
+  // merged for the marquee bar. Prices are venue marks, cached 15s.
+  app.get('/api/ticker', async (c) => {
+    try {
+      const data = await globalCache.wrap('ticker:tape', 15_000, async () => {
+        const client = new SoDEXClient(config.sodex.endpoint, config.sodex.apiKeyName);
+        const [perps, spot] = await Promise.all([
+          client.getPerpsTickers().catch(() => []),
+          client.getSpotTickers().catch(() => []),
+        ]);
+        // Indices piggyback on the 10-min cache — no extra SoSoValue budget
+        const idx = await globalCache.wrap('indices:list', 10 * 60_000, async () => {
+          const soso = new SoSoValueClient(config.sosovalue.apiKey);
+          return { indices: await soso.getIndices(), fetchedAt: Date.now() };
+        }).catch(() => ({ indices: [] as Array<{ ticker: string; price?: number; changePercent24h?: number }> }));
+
+        const num = (v: string | undefined) => {
+          const n = parseFloat(v ?? '');
+          return Number.isFinite(n) ? n : null;
+        };
+        const items = [
+          ...perps.map((t) => ({ symbol: t.symbol, price: num(t.lastPrice), changePct: num(t.priceChange24h), src: 'perps' as const })),
+          ...spot.map((t) => ({ symbol: t.symbol, price: num(t.lastPrice), changePct: num(t.priceChange24h), src: 'spot' as const })),
+          ...(idx.indices ?? []).map((i) => ({ symbol: i.ticker, price: i.price ?? null, changePct: i.changePercent24h ?? null, src: 'ssi' as const })),
+        ].filter((t) => t.symbol && t.price !== null);
+        return { items, count: items.length, fetchedAt: Date.now() };
+      });
+      return c.json(data);
+    } catch (err) {
+      return c.json({ items: [], error: String(err).slice(0, 120), fetchedAt: Date.now() }, 503);
+    }
+  });
+
+  // ── Market microstructure (Wave 7, SoDEX public data) ──────────────────────
+  // The venue's REAL order book — bids/asks, mid, spread — for the depth ladder.
+  app.get('/api/depth', async (c) => {
+    const symbol = c.req.query('symbol') ?? 'BTC-USD';
+    if (!/^[A-Z0-9]{2,10}-USD$/.test(symbol)) return c.json({ error: 'symbol like BTC-USD' }, 400);
+    try {
+      const data = await globalCache.wrap(`depth:${symbol}`, 5_000, async () => {
+        const client = new SoDEXClient(config.sodex.endpoint, config.sodex.apiKeyName);
+        const book = await client.getPerpsOrderbook(symbol);
+        const toLevel = (l: { price: string; quantity: string }) => [parseFloat(l.price), parseFloat(l.quantity)] as [number, number];
+        const bids = book.bids.slice(0, 12).map(toLevel);
+        const asks = book.asks.slice(0, 12).map(toLevel);
+        const bestBid = bids[0]?.[0] ?? null;
+        const bestAsk = asks[0]?.[0] ?? null;
+        return {
+          symbol, bids, asks,
+          mid: bestBid !== null && bestAsk !== null ? (bestBid + bestAsk) / 2 : null,
+          spread: bestBid !== null && bestAsk !== null ? bestAsk - bestBid : null,
+          fetchedAt: Date.now(),
+        };
+      });
+      return c.json(data);
+    } catch (err) {
+      return c.json({ error: String(err).slice(0, 120) }, 503);
+    }
+  });
+
+  // The venue's REAL prints — every fill on the tape, side/price/size/time.
+  app.get('/api/tape', async (c) => {
+    const symbol = c.req.query('symbol') ?? 'BTC-USD';
+    if (!/^[A-Z0-9]{2,10}-USD$/.test(symbol)) return c.json({ error: 'symbol like BTC-USD' }, 400);
+    try {
+      const data = await globalCache.wrap(`tape:${symbol}`, 5_000, async () => {
+        const client = new SoDEXClient(config.sodex.endpoint, config.sodex.apiKeyName);
+        const trades = await client.getPerpsTrades(symbol, 30);
+        return { symbol, trades, fetchedAt: Date.now() };
+      });
+      return c.json(data);
+    } catch (err) {
+      return c.json({ error: String(err).slice(0, 120) }, 503);
+    }
+  });
+
   // ── SoSoValue SSI indices (unused API module → product surface) ────────────
   app.get('/api/indices', async (c) => {
     try {
@@ -101,6 +194,46 @@ export function portfolioRoutes(app: Hono): void {
         const client = new SoSoValueClient(config.sosovalue.apiKey);
         const indices = await client.getIndices();
         return { indices, fetchedAt: Date.now() };
+      });
+      return c.json(data);
+    } catch (err) {
+      return c.json({ error: String(err).slice(0, 120) }, 503);
+    }
+  });
+
+  // ── Sector Spotlight (Wave 7, SoSoValue) — which crypto sector is moving ───
+  app.get('/api/sectors', async (c) => {
+    try {
+      const data = await globalCache.wrap('sectors:spotlight', 10 * 60_000, async () => {
+        const client = new SoSoValueClient(config.sosovalue.apiKey);
+        // Payload shape is data.sector[] — unwrap manually (extractList can't see it)
+        const res = await client.raw('/currencies/sector-spotlight') as { data?: { sector?: Array<{ name: string; change_pct_24h: number; marketcap_dom: number }> }; sector?: Array<{ name: string; change_pct_24h: number; marketcap_dom: number }> };
+        const sectors = (res?.data?.sector ?? res?.sector ?? [])
+          .map((s) => ({ name: s.name, changePct24h: s.change_pct_24h * 100, marketcapDom: s.marketcap_dom * 100 }))
+          .sort((a, b) => b.marketcapDom - a.marketcapDom);
+        return { sectors, fetchedAt: Date.now() };
+      });
+      return c.json(data);
+    } catch (err) {
+      return c.json({ error: String(err).slice(0, 120) }, 503);
+    }
+  });
+
+  // ── SSI X-Ray (Wave 7, SoSoValue) — what's actually inside an SSI index ────
+  app.get('/api/indices/:ticker/constituents', async (c) => {
+    const ticker = c.req.param('ticker').toLowerCase();
+    if (!/^[a-z0-9.]{2,24}$/.test(ticker)) return c.json({ error: 'bad ticker' }, 400);
+    try {
+      const data = await globalCache.wrap(`ssi:xray:${ticker}`, 30 * 60_000, async () => {
+        const client = new SoSoValueClient(config.sosovalue.apiKey);
+        const constituents = await client.getIndexConstituents(ticker);
+        return {
+          ticker,
+          constituents: constituents
+            .map((x) => ({ symbol: x.symbol, weight: Math.round(x.weight * 10000) / 100 }))
+            .sort((a, b) => b.weight - a.weight),
+          fetchedAt: Date.now(),
+        };
       });
       return c.json(data);
     } catch (err) {

@@ -99,6 +99,7 @@ app.get('/api/status', (c) =>
     running: true,
     killSwitch: isKillSwitchActive(),
     killState: getKillState(),
+    attestation: attestationService.getHealth(),
     uptime: Math.round(process.uptime()),
     timestamp: Date.now(),
   }),

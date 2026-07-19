@@ -418,6 +418,22 @@ export const portfolioApi = {
   klines: (symbol: string, interval = '1h', limit = 48) =>
     fetchJson<BackendKlines>(`/api/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${limit}`),
   indices: () => fetchJson<{ indices: Array<Record<string, unknown>>; fetchedAt: number }>('/api/indices'),
+  evmBalance: (address: string) =>
+    fetchJson<{ address: string; chainId: number; sosoNative: number | null; fetchedAt: number }>(
+      `/api/evm/balance?address=${encodeURIComponent(address)}`),
+  ticker: () =>
+    fetchJson<{ items: Array<{ symbol: string; price: number; changePct: number | null; src: 'perps' | 'spot' | 'ssi' }>; count: number; fetchedAt: number }>('/api/ticker'),
+  depth: (symbol: string) =>
+    fetchJson<{ symbol: string; bids: [number, number][]; asks: [number, number][]; mid: number | null; spread: number | null; fetchedAt: number }>(
+      `/api/depth?symbol=${encodeURIComponent(symbol)}`),
+  tape: (symbol: string) =>
+    fetchJson<{ symbol: string; trades: Array<{ id: number; ts: number; side: 'BUY' | 'SELL'; price: number; qty: number }>; fetchedAt: number }>(
+      `/api/tape?symbol=${encodeURIComponent(symbol)}`),
+  sectors: () =>
+    fetchJson<{ sectors: Array<{ name: string; changePct24h: number; marketcapDom: number }>; fetchedAt: number }>('/api/sectors'),
+  ssiXray: (ticker: string) =>
+    fetchJson<{ ticker: string; constituents: Array<{ symbol: string; weight: number }>; fetchedAt: number }>(
+      `/api/indices/${encodeURIComponent(ticker)}/constituents`),
   treasuries: () => fetchJson<{ treasuries: Array<Record<string, unknown>>; fetchedAt: number }>('/api/treasuries'),
 };
 
@@ -462,8 +478,16 @@ export const chatApi = {
 export const communityApi = {
   feedback: (params: { email: string; category: string; subject?: string; description: string; page?: string }) =>
     postJson<{ ok?: boolean; message?: string; error?: string }>('/api/feedback', params),
-  comments: () => fetchJson<{ comments: Array<{ id: string; name: string; body: string; created_at: number }> }>('/api/comments'),
+  comments: () => fetchJson<{
+    comments: Array<{ id: string; name: string; body: string; created_at: number }>;
+    retentionHours?: number;
+    quota?: { used: number; max: number; resetAt: number | null } | null;
+    durable?: boolean;
+  }>('/api/comments'),
   postComment: (body: string) => postJson<{ ok?: boolean; error?: string }>('/api/comments', { body }),
+  claimStatus: () => fetchJson<{ claimable: boolean; streak: number; nextAmount: number; nextClaimAt: number | null; error?: string }>('/api/claim'),
+  claim: () => postJson<{ ok?: boolean; amount?: number; streak?: number; credits?: number; claimable?: boolean; nextClaimAt?: number | null; nextAmount?: number; error?: string }>('/api/claim', {}),
+  creditsBoard: () => fetchJson<{ leaderboard: Array<{ rank: number; name: string; provider: string; credits: number }> }>('/api/leaderboard/credits'),
   referral: () => fetchJson<{ code: string; link: string; bonus: number; joined: number; earned: number; error?: string }>('/api/referral'),
 };
 

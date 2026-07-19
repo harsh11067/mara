@@ -21,6 +21,7 @@ import { SoSoValueClient, SOSOVALUE_ENDPOINTS } from '../services/sosovalue-clie
 import { SoDEXClient } from '../services/sodex-client.js';
 import { telegramCheck } from '../services/telegram.js';
 import { replicatorStatus } from '../store/db-replicator.js';
+import { supabaseStatus } from '../store/supabase-store.js';
 import { getDb } from '../store/db.js';
 import { globalCache } from '../utils/ttl-cache.js';
 import { getCircuitBreakerState } from '../risk/circuit-breaker.js';
@@ -151,6 +152,21 @@ export async function runDiag(): Promise<DiagReport> {
           : rep.lastPushAt
             ? `last snapshot ${Math.round((Date.now() - rep.lastPushAt) / 1000)}s ago (${((rep.snapshotBytes ?? 0) / 1024).toFixed(0)} KB)`
             : 'enabled — first snapshot pending',
+    });
+
+    // ── Supabase durable store ───────────────────────────────────────────────
+    const sb = supabaseStatus();
+    checks.push({
+      name: 'supabase', label: 'Supabase durable store',
+      ok: sb.configured && sb.reachable && Object.values(sb.tables).some(Boolean),
+      latencyMs: null,
+      detail: !sb.configured
+        ? 'SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set'
+        : !sb.reachable
+          ? `unreachable: ${sb.lastError ?? 'unknown'}`
+          : Object.values(sb.tables).every(Boolean)
+            ? `ON — durable tables: ${Object.keys(sb.tables).join(', ')}`
+            : `reachable — run setup SQL for: ${Object.entries(sb.tables).filter(([, v]) => !v).map(([k]) => k).join(', ')}`,
     });
 
     // ── Attestation chain ────────────────────────────────────────────────────
